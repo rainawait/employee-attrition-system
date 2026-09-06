@@ -27,3 +27,7 @@ env/
 
 # Output / temp
 *.log
+
+# Project docs and presentation (kept locally, not in repo)
+flaskproject(1)/flaskproject/项目文档/
+flaskproject(1)/flaskproject/演示演讲稿.md
