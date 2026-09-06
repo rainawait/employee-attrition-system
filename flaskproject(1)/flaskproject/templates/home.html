@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>员工离职预警系统</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; overflow: hidden; }
+
+        .layui-layout-admin .layui-header {
+            background-color: #1f2937 !important;
+            height: 60px !important;
+            line-height: 60px !important;
+            overflow: visible !important;
+            position: relative;
+            z-index: 9999 !important;
+        }
+        .layui-logo {
+            color: #009688;
+            font-size: 18px;
+            font-weight: bold;
+            padding-left: 20px;
+            width: 220px;
+            text-align: left;
+            float: left;
+            line-height: 60px;
+        }
+        .header-user-nav {
+            float: right;
+            margin-right: 20px;
+        }
+        .header-user-nav > li > a {
+            color: #fff !important;
+            height: 60px;
+            line-height: 60px;
+        }
+        .layui-header .layui-nav-child {
+            z-index: 10000 !important;
+            background-color: #fff !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            border-radius: 4px;
+            top: 60px !important;
+            min-width: 120px;
+        }
+        .layui-header .layui-nav-child dd {
+            line-height: 38px;
+        }
+        .layui-header .layui-nav-child dd a {
+            color: #333 !important;
+            line-height: 38px !important;
+            padding: 0 15px;
+        }
+        .layui-header .layui-nav-child dd a:hover {
+            background-color: #f2f2f2 !important;
+            color: #009688 !important;
+        }
+        .layui-layout-admin .layui-side {
+            background-color: #1f2937;
+            top: 60px;
+            width: 220px;
+            z-index: 999;
+        }
+        .layui-nav-tree {
+            width: 220px;
+        }
+        .layui-nav-tree .layui-nav-item a {
+            height: 50px;
+            line-height: 50px;
+            color: #d1d5db;
+        }
+        .layui-nav-tree .layui-this,
+        .layui-nav-tree .layui-this > a,
+        .layui-nav-tree .layui-nav-child dd.layui-this,
+        .layui-nav-tree .layui-nav-child dd.layui-this a {
+            background-color: #009688 !important;
+        }
+        .layui-nav-tree .layui-nav-item a:hover {
+            background-color: #374151;
+        }
+        .layui-nav-tree .layui-nav-child a {
+            padding-left: 40px !important;
+        }
+        .layui-body {
+            top: 60px;
+            left: 220px;
+            bottom: 0;
+            background-color: #f3f4f6;
+        }
+        #mainFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body class="layui-layout-body">
+<div class="layui-layout layui-layout-admin">
+    <!-- 顶部导航 -->
+    <div class="layui-header">
+        <div class="layui-logo">员工离职预警系统</div>
+        <ul class="layui-nav header-user-nav" lay-filter="headerNav">
+            <li class="layui-nav-item">
+                <a href="javascript:;">{{ username }}</a>
+                <dl class="layui-nav-child">
+                    <dd><a href="/user/profile" target="mainFrame">个人中心</a></dd>
+                    <dd><a href="/logout">退出登录</a></dd>
+                </dl>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="sideMenu">
+                <!-- 系统首页 -->
+                <li class="layui-nav-item layui-this">
+                    <a href="/welcome" target="mainFrame">系统首页</a>
+                </li>
+
+                <!-- 员工列表 -->
+                <li class="layui-nav-item">
+                    <a href="/employee/list" target="mainFrame">员工列表</a>
+                </li>
+
+                <!-- ===== 离职风险预测（父菜单，带子菜单） ===== -->
+                <li class="layui-nav-item">
+                    <a href="javascript:;">离职风险预测</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/predict" target="mainFrame">单员工预测</a></dd>
+                        <dd><a href="/predict/risk_list" target="mainFrame">风险排名</a></dd>
+                        <dd><a href="/predict/insight" target="mainFrame">离职洞察</a></dd>
+                        <dd><a href="/predict/report_history" target="mainFrame">报告历史</a></dd>
+                        <dd><a href="/report/compare" target="mainFrame">对比分析</a></dd>
+                        <dd><a href="/predict/interventions" target="mainFrame">干预记录</a></dd>
+                        <dd><a href="/predict/interventions/effectiveness" target="mainFrame">干预效果</a></dd>
+                    </dl>
+                </li>
+
+                <!-- 用户管理（仅管理员） -->
+                <li class="layui-nav-item" id="menu-user-admin" style="display:none;">
+                    <a href="/user/list" target="mainFrame">用户管理</a>
+                </li>
+
+                <!-- 操作日志 -->
+                <li class="layui-nav-item">
+                    <a href="javascript:;">操作日志</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/log/list" target="mainFrame">全部日志</a></dd>
+                        <dd><a href="/log/stats" target="mainFrame">今日统计</a></dd>
+                        <dd><a href="/log/overview" target="mainFrame">系统架构</a></dd>
+                    </dl>
+                </li>
+
+                <!-- 个人中心 -->
+                <li class="layui-nav-item">
+                    <a href="/user/profile" target="mainFrame">个人中心</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="layui-body">
+        <iframe name="mainFrame" id="mainFrame" src="/welcome"></iframe>
+    </div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+    // 将 layui.use 放在 window.onload 之前，确保模块提前加载
+    layui.use(['element', 'jquery', 'layer'], function(){
+        var element = layui.element;
+        var $ = layui.jquery;
+        var layer = layui.layer;
+
+        // ===== 1. 原有初始化逻辑 =====
+        element.render('nav');
+        var role = '{{ role }}';
+        if(role === 'admin'){
+            $('#menu-user-admin').show();
+            element.render('nav', 'sideMenu');
+        }
+        $(document).on('click', '.layui-nav-item a', function(){
+            var href = $(this).attr('href');
+            if(href && href !== 'javascript:;'){
+                $('.layui-nav-item').removeClass('layui-this');
+                $(this).parent().addClass('layui-this');
+            }
+        });
+
+        // ===== 2. 预警通知轮询功能 =====
+        var lastRiskCount = 0;
+        var isFirstRun = true;
+        var alertTimer = null;
+
+        function checkHighRisk() {
+            $.ajax({
+                url: '/predict/api/batch',
+                type: 'GET',
+                dataType: 'json',
+                timeout: 10000,
+                success: function(res) {
+                    if (res.code === 0 && res.data) {
+                        // 筛选高风险员工
+                        var highRisk = res.data.filter(function(item) {
+                            return item.risk_level === '高风险';
+                        });
+                        var count = highRisk.length;
+                        if (count > 0) {
+                            // 首次运行或高风险人数增加时弹窗
+                            if (isFirstRun || count > lastRiskCount) {
+                                var msg = '⚠️ 系统检测到 <strong>' + count + '</strong> 名高风险员工，请及时处理！<br><a href="/predict/risk_list" target="_blank" style="color:#009688;">点击查看风险排名</a>';
+                                layer.open({
+                                    type: 0,
+                                    title: '离职风险预警',
+                                    content: msg,
+                                    area: ['400px', '200px'],
+                                    shadeClose: true,
+                                    btn: ['知道了', '前往处理'],
+                                    yes: function(index) {
+                                        layer.close(index);
+                                    },
+                                    btn2: function(index) {
+                                        layer.close(index);
+                                        // 跳转到风险排名（在 iframe 中打开）
+                                        var mainFrame = document.getElementById('mainFrame');
+                                        if (mainFrame) {
+                                            mainFrame.src = '/predict/risk_list';
+                                        }
+                                    }
+                                });
+                                // 浏览器桌面通知（需用户授权）
+                                if (window.Notification && Notification.permission === 'granted') {
+                                    new Notification('员工离职预警', {
+                                        body: '检测到 ' + count + ' 名高风险员工',
+                                        icon: '/static/images/alert.png'  // 需要预先准备图标
+                                    });
+                                } else if (window.Notification && Notification.permission === 'default') {
+                                    Notification.requestPermission();
+                                }
+                                lastRiskCount = count;
+                                isFirstRun = false;
+                            }
+                        } else {
+                            // 无高风险，重置计数（但保留首次运行标记，确保下次出现时弹窗）
+                            lastRiskCount = 0;
+                            isFirstRun = false;
+                        }
+                    }
+                },
+                error: function() {
+                    // 静默失败，不打扰用户
+                }
+            });
+        }
+
+        function startAlertPolling() {
+            // 立即执行一次
+            checkHighRisk();
+            if (alertTimer) clearInterval(alertTimer);
+            alertTimer = setInterval(checkHighRisk, 60000); // 60秒
+        }
+
+        // 请求通知权限（可选）
+        if (window.Notification && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // 启动轮询
+        startAlertPolling();
+
+        // 页面可见性变化时暂停/恢复轮询（节省资源）
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (alertTimer) {
+                    clearInterval(alertTimer);
+                    alertTimer = null;
+                }
+            } else {
+                if (!alertTimer) {
+                    alertTimer = setInterval(checkHighRisk, 60000);
+                    // 立即检查一次
+                    checkHighRisk();
+                }
+            }
+        });
+
+        // 页面卸载时清除定时器
+        window.addEventListener('beforeunload', function() {
+            if (alertTimer) {
+                clearInterval(alertTimer);
+                alertTimer = null;
+            }
+        });
+    });
+</script>
+</body>
+</html>

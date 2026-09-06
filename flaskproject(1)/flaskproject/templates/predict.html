@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>单员工预测</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 28px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .page-title { font-size: 24px; font-weight: 700; color: #1a2332; margin-bottom: 24px; letter-spacing: 0.5px; }
+        .page-title small { font-weight: 400; font-size: 15px; color: #8c939d; margin-left: 12px; }
+        .row-equal { display: flex; flex-wrap: wrap; gap: 24px; }
+        .row-equal .col { flex: 1; min-width: 340px; }
+        .card { background: #fff; border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.06); padding: 28px 32px 32px 32px; height: 100%; display: flex; flex-direction: column; transition: box-shadow 0.3s; }
+        .card:hover { box-shadow: 0 12px 36px rgba(0,0,0,0.08); }
+        .card-header { font-size: 18px; font-weight: 600; color: #1a2332; padding-bottom: 16px; border-bottom: 2px solid #f0f2f7; margin-bottom: 22px; flex-shrink: 0; }
+        .card-header i { margin-right: 10px; color: #009688; }
+        .card-body { flex: 1; display: flex; flex-direction: column; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 16px 24px; }
+        .form-row .form-group { flex: 1 1 calc(50% - 12px); min-width: 180px; margin-bottom: 16px; }
+        .form-group.full-width { flex: 1 1 100%; }
+        .form-label { display: block; font-weight: 500; color: #2c3e50; margin-bottom: 4px; font-size: 14px; }
+        .form-label .required { color: #f44336; margin-left: 2px; }
+        .form-label .icon { margin-right: 4px; color: #8c939d; }
+        .form-control { width: 100%; height: 40px; padding: 0 12px; border: 1px solid #dcdfe6; border-radius: 8px; font-size: 14px; color: #333; background: #fff; transition: border-color 0.15s, box-shadow 0.15s; }
+        .form-control:focus { border-color: #009688; outline: 0; box-shadow: 0 0 0 3px rgba(0,150,136,0.12); }
+        select.form-control { appearance: none; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+        .radio-group { display: flex; gap: 20px; padding-top: 4px; }
+        .radio-group label { font-weight: 400; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+        .radio-group input[type="radio"] { width: 16px; height: 16px; accent-color: #009688; }
+        .range-wrapper { display: flex; align-items: center; gap: 16px; }
+        .range-wrapper input[type="range"] { flex: 1; height: 6px; background: #e0e0e0; border-radius: 4px; outline: none; -webkit-appearance: none; appearance: none; }
+        .range-wrapper input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #009688; cursor: pointer; box-shadow: 0 2px 8px rgba(0,150,136,0.35); }
+        .range-value { min-width: 36px; text-align: center; font-weight: 700; color: #009688; font-size: 20px; }
+        .range-labels { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 2px; }
+        .btn-row { display: flex; gap: 14px; margin-top: 18px; }
+        .btn-primary { flex: 1; background: #009688; border: none; color: #fff; height: 46px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary:hover { background: #00796b; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-reset { flex: 0.4; background: #f5f7fa; border: 1px solid #dcdfe6; color: #555; height: 46px; border-radius: 8px; font-size: 15px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-reset:hover { background: #e8ecf1; }
+        .section-divider { border-top: 2px dashed #e8ecf1; margin: 12px 0 16px; padding-top: 14px; }
+        .section-title { font-weight: 600; color: #009688; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .result-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 0; }
+        #gauge-chart { width: 100%; height: 340px; max-width: 460px; margin: 0 auto; }
+        .result-text { text-align: center; margin-top: 10px; width: 100%; }
+        .result-text .prob-value { font-size: 40px; font-weight: 700; color: #1a2332; }
+        .result-text .prob-unit { font-size: 20px; color: #8c939d; }
+        .result-text .risk-tag { display: inline-block; padding: 6px 30px; border-radius: 30px; font-weight: 700; font-size: 20px; margin-top: 8px; }
+        .risk-tag.low { background: #e8f5e9; color: #2e7d32; }
+        .risk-tag.mid { background: #fff8e1; color: #f57f17; }
+        .risk-tag.high { background: #ffebee; color: #c62828; }
+        .result-desc { font-size: 15px; color: #8c939d; margin-top: 12px; background: #f8faff; padding: 10px 20px; border-radius: 10px; width: 100%; text-align: center; }
+        .result-desc strong { color: #1a2332; }
+        .error-placeholder { color: #f44336; padding: 20px; text-align: center; }
+        @media (max-width: 768px) { .container { padding: 0; } .card { padding: 18px; } .btn-row { flex-direction: column; } .btn-reset { flex: 1; } .row-equal .col { min-width: 100%; } .form-row .form-group { flex: 1 1 100%; } #gauge-chart { height: 240px; max-width: 100%; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-title">🔮 单员工离职风险预测 <small>输入核心信息，快速评估</small></div>
+
+    <div class="row-equal">
+        <!-- 左侧表单 -->
+        <div class="col">
+            <div class="card">
+                <div class="card-header"><i>📝</i> 员工特征输入</div>
+                <div class="card-body">
+                    <form id="predictForm" style="display:flex;flex-direction:column;height:100%;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">💼</span>工作岗位 <span class="required">*</span></label>
+                                <select name="JobRole" class="form-control" required>
+                                    <option value="Sales Executive">销售主管</option>
+                                    <option value="Research Scientist" selected>研发工程师</option>
+                                    <option value="Laboratory Technician">实验室技术员</option>
+                                    <option value="Manufacturing Director">制造总监</option>
+                                    <option value="Healthcare Representative">医疗代表</option>
+                                    <option value="Manager">经理</option>
+                                    <option value="Sales Representative">销售代表</option>
+                                    <option value="Research Director">研发总监</option>
+                                    <option value="Human Resources">人力资源专员</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">⏰</span>是否加班 <span class="required">*</span></label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="OverTime" value="Yes" checked> 是</label>
+                                    <label><input type="radio" name="OverTime" value="No"> 否</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">😊</span>工作满意度 <span class="required">*</span></label>
+                                <div class="range-wrapper">
+                                    <input type="range" name="JobSatisfaction" id="satisfactionSlider" min="1" max="4" value="3" step="1">
+                                    <span class="range-value" id="satisfactionDisplay">3</span>
+                                </div>
+                                <div class="range-labels">
+                                    <span>1 很低</span><span>2 低</span><span>3 一般</span><span>4 很高</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">💰</span>月收入（￥） <span class="required">*</span></label>
+                                <input type="number" name="MonthlyIncome" class="form-control" value="6000" min="1000" max="99999" step="100" required>
+                            </div>
+                        </div>
+
+                        <div class="section-divider"><div class="section-title">📌 更多特征（可选）</div></div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">🎂</span>年龄</label>
+                                <input type="number" name="Age" class="form-control" value="30" min="18" max="65">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">🏢</span>部门</label>
+                                <select name="Department" class="form-control">
+                                    <option value="Sales">销售</option>
+                                    <option value="Research & Development" selected>研发</option>
+                                    <option value="Human Resources">人力资源</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">💍</span>婚姻状况</label>
+                                <select name="MaritalStatus" class="form-control">
+                                    <option value="Single">单身</option>
+                                    <option value="Married" selected>已婚</option>
+                                    <option value="Divorced">离异</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">✈️</span>出差频率</label>
+                                <select name="BusinessTravel" class="form-control">
+                                    <option value="Travel_Rarely" selected>很少出差</option>
+                                    <option value="Travel_Frequently">频繁出差</option>
+                                    <option value="Non-Travel">不出差</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">📅</span>司龄（年）</label>
+                                <input type="number" name="YearsAtCompany" class="form-control" value="2" min="0" max="40">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label"><span class="icon">⚖️</span>工作生活平衡</label>
+                                <input type="number" name="WorkLifeBalance" class="form-control" value="3" min="1" max="4">
+                            </div>
+                        </div>
+
+                        <div class="btn-row" style="margin-top:auto;">
+                            <button type="button" class="btn-primary" id="predictBtn">🚀 立即评估风险</button>
+                            <button type="reset" class="btn-reset">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧结果 -->
+        <div class="col">
+            <div class="card" style="justify-content:center;">
+                <div class="card-header" style="border-bottom:2px solid #f0f2f7; margin-bottom:16px;"><i>📊</i> 评估结果</div>
+                <div class="result-area" id="resultArea">
+                    <div id="gauge-chart"></div>
+                    <div class="result-text">
+                        <div class="prob-value" id="probValue">--</div>
+                        <div class="risk-tag" id="riskTag">等待预测</div>
+                        <div class="result-desc" id="resultDesc">输入员工信息后点击评估</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+(function() {
+    if (typeof echarts === 'undefined') {
+        document.getElementById('resultArea').innerHTML = `
+            <div class="error-placeholder">
+                <i class="layui-icon layui-icon-face-smile" style="font-size:48px;"></i>
+                <p style="margin-top:10px;">图表组件加载失败，请刷新页面重试</p>
+                <button onclick="location.reload()" class="layui-btn layui-btn-sm" style="margin-top:10px;">刷新页面</button>
+            </div>
+        `;
+        return;
+    }
+
+    // 滑块联动
+    var slider = document.getElementById('satisfactionSlider');
+    var display = document.getElementById('satisfactionDisplay');
+    slider.addEventListener('input', function() { display.textContent = this.value; });
+
+    // ---- 图表管理（重建策略） ----
+    var chartInstance = null;
+
+    function rebuildChart(value) {
+        var dom = document.getElementById('gauge-chart');
+        // 销毁旧实例
+        if (chartInstance) {
+            chartInstance.dispose();
+            chartInstance = null;
+        }
+        // 创建新实例
+        chartInstance = echarts.init(dom, null, { renderer: 'canvas' });
+        var safeValue = Math.min(100, Math.max(0, Number(value) || 0));
+        var option = {
+            series: [{
+                type: 'gauge',
+                min: 0,
+                max: 100,
+                radius: '80%',
+                center: ['50%', '55%'],
+                axisLine: {
+                    lineStyle: {
+                        color: [[0.3, '#5FB878'], [0.7, '#FFB800'], [1, '#FF5722']],
+                        width: 22
+                    }
+                },
+                pointer: { width: 10, length: '65%' },
+                detail: {
+                    formatter: '{value}%',
+                    fontSize: 30,
+                    fontWeight: 'bold',
+                    color: '#1a2332',
+                    offsetCenter: [0, 35]
+                },
+                data: [{ value: safeValue }]
+            }]
+        };
+        chartInstance.setOption(option);
+        // 多次 resize 确保尺寸正确
+        setTimeout(function() { if (chartInstance) chartInstance.resize(); }, 50);
+        setTimeout(function() { if (chartInstance) chartInstance.resize(); }, 150);
+        return chartInstance;
+    }
+
+    // 初次构建
+    rebuildChart(0);
+
+    // 窗口自适应
+    window.addEventListener('resize', function() {
+        if (chartInstance) chartInstance.resize();
+    });
+
+    // ---- 预测按钮 ----
+    document.getElementById('predictBtn').addEventListener('click', function() {
+        var formData = {
+            JobRole: document.querySelector('select[name="JobRole"]').value,
+            OverTime: document.querySelector('input[name="OverTime"]:checked').value,
+            JobSatisfaction: parseInt(document.getElementById('satisfactionSlider').value) || 3,
+            MonthlyIncome: parseFloat(document.querySelector('input[name="MonthlyIncome"]').value) || 6000,
+            Age: parseInt(document.querySelector('input[name="Age"]').value) || 30,
+            Department: document.querySelector('select[name="Department"]').value,
+            MaritalStatus: document.querySelector('select[name="MaritalStatus"]').value,
+            BusinessTravel: document.querySelector('select[name="BusinessTravel"]').value,
+            YearsAtCompany: parseInt(document.querySelector('input[name="YearsAtCompany"]').value) || 2,
+            WorkLifeBalance: parseInt(document.querySelector('input[name="WorkLifeBalance"]').value) || 3
+        };
+
+        var allData = {
+            Education: 3,
+            EducationField: 'Marketing',
+            EnvironmentSatisfaction: 3,
+            Gender: 'Male',
+            DailyRate: 800,
+            DistanceFromHome: 10,
+            HourlyRate: 50,
+            JobInvolvement: 3,
+            JobLevel: 1,
+            MonthlyRate: 15000,
+            NumCompaniesWorked: 1,
+            PercentSalaryHike: 11,
+            PerformanceRating: 3,
+            RelationshipSatisfaction: 3,
+            StockOptionLevel: 0,
+            TrainingTimesLastYear: 2,
+            TotalWorkingYears: 5,
+            YearsInCurrentRole: 2,
+            YearsSinceLastPromotion: 1,
+            YearsWithCurrManager: 2
+        };
+        Object.assign(allData, formData);
+
+        var descEl = document.getElementById('resultDesc');
+        descEl.textContent = '⏳ 预测中...';
+        descEl.style.color = '#009688';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/predict/api/predict', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.timeout = 8000;
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var res = JSON.parse(xhr.responseText);
+                    if (res.code === 0 && res.data) {
+                        var d = res.data;
+                        var score, level;
+                        if (d.full) {
+                            score = d.full.risk_score;
+                            level = d.full.risk_level;
+                        } else {
+                            score = d.risk_score;
+                            level = d.risk_level;
+                        }
+                        if (score === undefined || isNaN(score)) {
+                            score = 0;
+                            level = '未知';
+                        }
+
+                        // 重建图表（更新数值）
+                        rebuildChart(score);
+
+                        // 更新文字
+                        document.getElementById('probValue').innerHTML = score + '<span class="prob-unit">%</span>';
+                        var tag = document.getElementById('riskTag');
+                        tag.textContent = level;
+                        tag.className = 'risk-tag ' + (level === '低风险' ? 'low' : level === '中风险' ? 'mid' : 'high');
+
+                        var desc = '该员工离职概率预测值为：<strong>' + score + '%</strong>，风险等级：' + level;
+                        if (level === '高风险') desc += '，建议HR立即关注。';
+                        else if (level === '中风险') desc += '，建议定期观察。';
+                        else desc += '，员工稳定性良好。';
+                        descEl.innerHTML = desc;
+                        descEl.style.color = '#333';
+                    } else {
+                        descEl.textContent = '❌ ' + (res.msg || '未知错误');
+                        descEl.style.color = '#f44336';
+                        layer.msg(res.msg || '预测失败', {icon: 2});
+                    }
+                } catch(e) {
+                    descEl.textContent = '❌ 数据解析错误，请重试';
+                    descEl.style.color = '#f44336';
+                    console.error(e);
+                }
+            } else {
+                descEl.textContent = '❌ 服务器错误 (状态码: ' + xhr.status + ')';
+                descEl.style.color = '#f44336';
+            }
+        };
+        xhr.onerror = function() {
+            descEl.textContent = '❌ 网络错误，请检查网络连接';
+            descEl.style.color = '#f44336';
+            layer.msg('网络错误', {icon: 2});
+        };
+        xhr.ontimeout = function() {
+            descEl.textContent = '❌ 请求超时，请重试';
+            descEl.style.color = '#f44336';
+        };
+        xhr.send(JSON.stringify(allData));
+    });
+
+    // ---- 重置 ----
+    document.querySelector('.btn-reset').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('probValue').innerHTML = '--';
+        document.getElementById('riskTag').textContent = '等待预测';
+        document.getElementById('riskTag').className = 'risk-tag';
+        document.getElementById('resultDesc').textContent = '输入员工信息后点击评估';
+        document.getElementById('resultDesc').style.color = '#8c939d';
+        document.getElementById('predictForm').reset();
+        document.getElementById('satisfactionDisplay').textContent = '3';
+        rebuildChart(0);
+    });
+
+})();
+</script>
+</body>
+</html>

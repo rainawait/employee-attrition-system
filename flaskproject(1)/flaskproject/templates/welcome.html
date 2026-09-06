@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>数据看板</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <script src="/static/js/echarts.min.js"></script>
+    <script src="/static/layui.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            padding: 24px;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #f6f9fc 0%, #e9f0f5 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #1a2332;
+        }
+
+        .layui-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.04);
+            transition: box-shadow 0.25s ease, transform 0.2s ease;
+            background: #ffffff;
+            border: none;
+            overflow: hidden;
+            height: 100%;
+            backdrop-filter: blur(2px);
+        }
+        .layui-card:hover {
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .layui-card-header {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a2332;
+            background: #fafcfe;
+            border-bottom: 1px solid #f0f4f8;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.3px;
+        }
+
+        .card-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+        .dot-blue { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.15); }
+        .dot-green { background: #10b981; box-shadow: 0 0 0 4px rgba(16,185,129,0.15); }
+        .dot-orange { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,0.15); }
+        .dot-purple { background: #8b5cf6; box-shadow: 0 0 0 4px rgba(139,92,246,0.15); }
+        .dot-red { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.15); }
+        .dot-teal { background: #14b8a6; box-shadow: 0 0 0 4px rgba(20,184,166,0.15); }
+        .dot-pink { background: #ec4899; box-shadow: 0 0 0 4px rgba(236,72,153,0.15); }
+
+        .kpi-card .layui-card-body {
+            padding: 18px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card .kpi-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #7e8c9e;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .kpi-card .kpi-icon { font-size: 20px; opacity: 0.8; }
+        .kpi-card .kpi-value {
+            font-size: 38px;
+            font-weight: 700;
+            color: #1a2332;
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+        }
+        .kpi-total .kpi-value { color: #3b82f6; }
+        .kpi-total .layui-card-body::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .kpi-attrition .kpi-value { color: #ef4444; }
+        .kpi-attrition .layui-card-body::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .kpi-active .kpi-value { color: #10b981; }
+        .kpi-active .layui-card-body::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .kpi-rate .kpi-value { color: #f59e0b; }
+        .kpi-rate .layui-card-body::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .chart-card-body { padding: 8px 12px 12px 12px; }
+        .chart-container-large {
+            width: 100%;
+            height: 380px;
+            min-height: 380px;
+        }
+        .chart-container-small {
+            width: 100%;
+            height: 330px;
+            min-height: 330px;
+        }
+
+        .table-card-body { padding: 0 20px 20px 20px; }
+        .layui-table {
+            border-radius: 12px;
+            overflow: hidden;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .layui-table thead tr {
+            background: linear-gradient(135deg, #f1f6fa 0%, #e9eef3 100%) !important;
+        }
+        .layui-table thead th {
+            font-weight: 600;
+            color: #1a2332;
+            padding: 12px 16px;
+            border-bottom: none;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+        .layui-table tbody tr:hover {
+            background: #f4f8fc !important;
+        }
+        .layui-table tbody td {
+            padding: 10px 16px;
+            border-color: #f0f4f8;
+            font-size: 13px;
+        }
+        .rank-num {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .rank-1 { background: #f59e0b; box-shadow: 0 2px 8px rgba(245,158,11,0.3); }
+        .rank-2 { background: #94a3b8; box-shadow: 0 2px 8px rgba(148,163,184,0.2); }
+        .rank-3 { background: #d97706; box-shadow: 0 2px 8px rgba(217,119,6,0.3); }
+        .rank-other { background: #e2e8f0; color: #475569; }
+
+        .flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px 20px -10px;
+        }
+        .flex-col-6 {
+            flex: 0 0 50%;
+            max-width: 50%;
+            padding: 0 10px;
+        }
+        .flex-col-3 {
+            flex: 0 0 25%;
+            max-width: 25%;
+            padding: 0 10px;
+        }
+        .flex-col-12 {
+            flex: 0 0 100%;
+            max-width: 100%;
+            padding: 0 10px;
+        }
+
+        .error-msg {
+            color: #ef4444;
+            padding: 20px;
+            background: #fef2f2;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .refresh-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            background: #ffffffcc;
+            backdrop-filter: blur(4px);
+            padding: 6px 16px 6px 20px;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            border: 1px solid #eef2f6;
+        }
+        .refresh-toggle .layui-form-switch {
+            margin: 0;
+            vertical-align: middle;
+            background: #d1d9e6;
+            border: none;
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+        }
+        .refresh-toggle .layui-form-switch i {
+            width: 20px;
+            height: 20px;
+            top: 2px;
+            left: 2px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.25s;
+        }
+        .refresh-toggle .layui-form-onswitch {
+            background: #3b82f6 !important;
+        }
+        .refresh-toggle .layui-form-onswitch i {
+            left: 22px;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .top-bar .brand {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a2332;
+            letter-spacing: -0.5px;
+        }
+        .top-bar .brand small {
+            font-weight: 400;
+            font-size: 14px;
+            color: #7e8c9e;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="brand">📊 数据看板 <small>实时概览</small></div>
+        {% if not export_mode %}
+        <div class="refresh-toggle">
+            <span>🔄 自动刷新（30秒）</span>
+            <input type="checkbox" id="autoRefreshSwitch" lay-skin="switch" lay-filter="refreshSwitch">
+            <button class="layui-btn layui-btn-sm layui-btn-normal" id="btn-export-dashboard" style="margin-left:12px;border-radius:6px;">
+                <i class="layui-icon layui-icon-download-circle"></i> 导出看板
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- KPI -->
+    <div class="flex-row">
+        <div class="flex-col-3">
+            <div class="layui-card kpi-card kpi-total">
+                <div class="layui-card-body">
+                    <div class="kpi-label"><span class="kpi-icon">👥</span> 员工总数</div>
+                    <div class="kpi-value" id="stat-total">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-col-3">
+            <div class="layui-card kpi-card kpi-attrition">
+                <div class="layui-card-body">
+                    <div class="kpi-label"><span class="kpi-icon">🚪</span> 离职人数</div>
+                    <div class="kpi-value" id="stat-attrition">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-col-3">
+            <div class="layui-card kpi-card kpi-active">
+                <div class="layui-card-body">
+                    <div class="kpi-label"><span class="kpi-icon">💼</span> 在职人数</div>
+                    <div class="kpi-value" id="stat-active">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-col-3">
+            <div class="layui-card kpi-card kpi-rate">
+                <div class="layui-card-body">
+                    <div class="kpi-label"><span class="kpi-icon">📊</span> 总体离职率</div>
+                    <div class="kpi-value" id="stat-rate">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第一行：部门离职率 -->
+    <div class="flex-row">
+        <div class="flex-col-12">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-blue"></span> 各部门离职率对比（水平）</div>
+                <div class="layui-card-body chart-card-body">
+                    <div id="bar-chart" class="chart-container-large"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二行：散点图 -->
+    <div class="flex-row">
+        <div class="flex-col-12">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-red"></span> 月薪 vs 离职率（散点图）</div>
+                <div class="layui-card-body chart-card-body">
+                    <div id="scatter-chart" class="chart-container-large"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第三行：两个折线图 -->
+    <div class="flex-row">
+        <div class="flex-col-6">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-purple"></span> 各年龄段离职率趋势</div>
+                <div class="layui-card-body chart-card-body">
+                    <div id="line-chart-age" class="chart-container-small"></div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-col-6">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-teal"></span> 工作年限 vs 离职率</div>
+                <div class="layui-card-body chart-card-body">
+                    <div id="line-chart-year" class="chart-container-small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第四行：玫瑰图 + 婚姻状况 -->
+    <div class="flex-row">
+        <div class="flex-col-6">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-orange"></span> 离职员工岗位分布（玫瑰图）</div>
+                <div class="layui-card-body chart-card-body">
+                    <div id="role-chart" class="chart-container-small"></div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-col-6">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-pink"></span> 婚姻状况离职率</div>
+                <div class="layui-card-body chart-card-body">
+                    <div id="marital-chart" class="chart-container-small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="flex-row">
+        <div class="flex-col-12">
+            <div class="layui-card">
+                <div class="layui-card-header"><span class="card-dot dot-red"></span> 部门离职明细排名</div>
+                <div class="layui-card-body table-card-body">
+                    <table class="layui-table" id="rank-table" lay-skin="line" style="margin-bottom:0;">
+                        <thead>
+                            <tr><th>排名</th><th>部门名称</th><th>总人数</th><th>离职人数</th><th>离职率(%)</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        layui.use(['jquery', 'form'], function() {
+            var $ = layui.jquery;
+            var form = layui.form;
+
+            if (typeof echarts === 'undefined') {
+                $('.chart-container-large, .chart-container-small').html('<div class="error-msg">⚠️ ECharts 库加载失败，请检查文件路径。</div>');
+                console.error('ECharts 未加载');
+                return;
+            }
+
+            var chartInstances = {};
+            var refreshInterval = null;
+            var isRefreshing = false;
+
+            form.on('switch(refreshSwitch)', function(obj) {
+                if (obj.elem.checked) {
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    refreshInterval = setInterval(function() {
+                        if (!isRefreshing) {
+                            isRefreshing = true;
+                            refreshAllData(function() { isRefreshing = false; });
+                        }
+                    }, 30000);
+                    layer.msg('🔄 自动刷新已开启，每30秒更新数据', {icon: 1, time: 1500});
+                } else {
+                    if (refreshInterval) {
+                        clearInterval(refreshInterval);
+                        refreshInterval = null;
+                    }
+                    layer.msg('自动刷新已关闭', {icon: 0, time: 1500});
+                }
+            });
+
+            // 导出看板按钮
+            $('#btn-export-dashboard').click(function(){
+                layer.msg('正在生成看板汇总图...', {icon: 16, time: 2000});
+                window.open('/api/stats/export_dashboard');
+            });
+
+            function refreshAllData(callback) {
+                loadOverview(function() {
+                    loadRankTable();
+                    refreshChart('bar-chart', '/api/stats/department', 'bar');
+                    refreshChart('scatter-chart', '/api/stats/salary_scatter', 'scatter');
+                    refreshChart('line-chart-age', '/api/stats/age_trend', 'line');
+                    refreshChart('line-chart-year', '/api/stats/year_trend', 'line');
+                    refreshChart('role-chart', '/api/stats/role', 'rose');
+                    refreshChart('marital-chart', '/api/stats/marital', 'maritalBar');
+                    if (callback) callback();
+                });
+            }
+
+            function refreshChart(domId, apiUrl, chartType) {
+                var dom = document.getElementById(domId);
+                if (!dom) return;
+                var chart = echarts.getInstanceByDom(dom);
+                if (!chart) {
+                    chart = echarts.init(dom);
+                    chartInstances[domId] = chart;
+                }
+                $.get(apiUrl, function(res) {
+                    if (res.code === 200) {
+                        var option = buildOption(chartType, res.data);
+                        if (option) chart.setOption(option,true);
+                    }
+                });
+            }
+
+            $(function() {
+                loadOverview();
+                loadRankTable();
+                initChart('bar-chart', '/api/stats/department', 'bar');
+                initChart('scatter-chart', '/api/stats/salary_scatter', 'scatter');
+                initChart('line-chart-age', '/api/stats/age_trend', 'line');
+                initChart('line-chart-year', '/api/stats/year_trend', 'line');
+                initChart('role-chart', '/api/stats/role', 'rose');
+                initChart('marital-chart', '/api/stats/marital', 'maritalBar');
+
+                var chartIds = ['bar-chart', 'scatter-chart', 'line-chart-age', 'line-chart-year', 'role-chart', 'marital-chart'];
+                window.onresize = function() {
+                    chartIds.forEach(function(id) {
+                        var dom = document.getElementById(id);
+                        if (dom) {
+                            var inst = echarts.getInstanceByDom(dom);
+                            if (inst) inst.resize();
+                        }
+                    });
+                };
+            });
+
+            function initChart(domId, apiUrl, chartType) {
+                var dom = document.getElementById(domId);
+                if (!dom) return;
+                var old = echarts.getInstanceByDom(dom);
+                if (old) old.dispose();
+                var chart = echarts.init(dom);
+                chartInstances[domId] = chart;
+
+                $.get(apiUrl, function(res) {
+                    if (res.code !== 200) {
+                        console.error(apiUrl + ' 错误:', res.msg);
+                        return;
+                    }
+                    var option = buildOption(chartType, res.data);
+                    if (option) chart.setOption(option);
+                }).fail(function(xhr) {
+                    console.error(apiUrl + ' 请求失败:', xhr.status);
+                });
+            }
+
+            var colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#f472b6', '#6366f1'];
+
+            function buildOption(type, data) {
+                switch (type) {
+                    case 'bar':
+                        return {
+                            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                            grid: { left: '8%', right: '10%', bottom: '12%', top: '8%', containLabel: true },
+                            xAxis: {
+                                type: 'value',
+                                name: '离职率(%)',
+                                nameTextStyle: { fontSize: 12, color: '#94a3b8', fontWeight: 500 },
+                                axisLabel: { fontSize: 12, color: '#94a3b8' },
+                                splitLine: { lineStyle: { color: '#eef2f6', type: 'dashed' } }
+                            },
+                            yAxis: {
+                                type: 'category',
+                                data: data.departments || [],
+                                axisLabel: { fontSize: 12, color: '#475569', margin: 8 },
+                                axisLine: { lineStyle: { color: '#e2e8f0' } }
+                            },
+                            series: [{
+                                data: data.rates || [],
+                                type: 'bar',
+                                barWidth: '40%',
+                                itemStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                        { offset: 0, color: '#93c5fd' },
+                                        { offset: 1, color: '#3b82f6' }
+                                    ]),
+                                    borderRadius: [0, 8, 8, 0]
+                                }
+                            }]
+                        };
+
+                    case 'scatter':
+                        if (!data || !Array.isArray(data) || data.length === 0) {
+                            return {
+                                title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+                                xAxis: { type: 'value', name: '月薪（元）' },
+                                yAxis: { type: 'value', name: '离职率(%)' }
+                            };
+                        }
+                        var points = data.map(function(item) {
+                            return { value: [item.salary, item.rate], label: item.label };
+                        });
+                        var salaries = data.map(function(d) { return d.salary; });
+                        var rates = data.map(function(d) { return d.rate; });
+                        var minSal = Math.min.apply(null, salaries) * 0.8;
+                        var maxSal = Math.max.apply(null, salaries) * 1.2;
+                        var minRate = 0;
+                        var maxRate = Math.max.apply(null, rates) * 1.3;
+                        return {
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: function(params) {
+                                    var d = params.data;
+                                    return '月薪段：' + d.label + '<br/>离职率：' + d.value[1] + '%';
+                                }
+                            },
+                            grid: { left: '8%', right: '10%', bottom: '20%', top: '15%', containLabel: true },
+                            xAxis: {
+                                type: 'value',
+                                name: '月薪（元）',
+                                nameTextStyle: { fontSize: 12, color: '#94a3b8', fontWeight: 500 },
+                                axisLabel: { fontSize: 12, color: '#94a3b8', formatter: function(v) { return v >= 10000 ? (v/10000) + '万' : v; } },
+                                splitLine: { lineStyle: { color: '#eef2f6', type: 'dashed' } },
+                                min: minSal,
+                                max: maxSal
+                            },
+                            yAxis: {
+                                type: 'value',
+                                name: '离职率(%)',
+                                nameTextStyle: { fontSize: 12, color: '#94a3b8', fontWeight: 500 },
+                                axisLabel: { fontSize: 12, color: '#94a3b8' },
+                                splitLine: { lineStyle: { color: '#eef2f6', type: 'dashed' } },
+                                min: minRate,
+                                max: maxRate
+                            },
+                            series: [{
+                                data: points,
+                                type: 'scatter',
+                                symbolSize: 16,
+                                itemStyle: { color: '#f59e0b', opacity: 0.8 },
+                                label: {
+                                    show: true,
+                                    formatter: function(params) { return params.data.label; },
+                                    fontSize: 10,
+                                    position: 'top',
+                                    color: '#475569',
+                                    distance: 6
+                                }
+                            }]
+                        };
+
+                    case 'line':
+                        var xKey = data.age_groups ? 'age_groups' : 'year_groups';
+                        var xData = data[xKey] || [];
+                        var yData = data.rates || [];
+                        return {
+                            tooltip: { trigger: 'axis', formatter: function(params) {
+                                var p = params[0];
+                                return p.name + '<br/>离职率：<strong>' + p.value + '%</strong>';
+                            }},
+                            grid: { left: '8%', right: '6%', bottom: '20%', top: '15%', containLabel: true },
+                            xAxis: {
+                                type: 'category',
+                                data: xData,
+                                axisLabel: { fontSize: 12, color: '#64748b', interval: 0, rotate: 15 },
+                                axisLine: { lineStyle: { color: '#e2e8f0' } }
+                            },
+                            yAxis: {
+                                type: 'value',
+                                name: '离职率(%)',
+                                nameTextStyle: { fontSize: 12, color: '#94a3b8', fontWeight: 500 },
+                                axisLabel: { fontSize: 12, color: '#94a3b8' },
+                                splitLine: { lineStyle: { color: '#eef2f6', type: 'dashed' } }
+                            },
+                            series: [{
+                                data: yData,
+                                type: 'line',
+                                smooth: true,
+                                symbol: 'circle',
+                                symbolSize: 8,
+                                lineStyle: { width: 3, color: '#8b5cf6' },
+                                areaStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: 'rgba(139,92,246,0.2)' },
+                                        { offset: 1, color: 'rgba(139,92,246,0.02)' }
+                                    ])
+                                },
+                                itemStyle: { color: '#7c3aed' }
+                            }]
+                        };
+
+                    case 'maritalBar':
+                        return {
+                            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                            grid: { left: '10%', right: '8%', bottom: '20%', top: '15%', containLabel: true },
+                            xAxis: {
+                                type: 'category',
+                                data: data.statuses || [],
+                                axisLabel: { fontSize: 12, color: '#64748b', interval: 0 },
+                                axisLine: { lineStyle: { color: '#e2e8f0' } }
+                            },
+                            yAxis: {
+                                type: 'value',
+                                name: '离职率(%)',
+                                nameTextStyle: { fontSize: 12, color: '#94a3b8', fontWeight: 500 },
+                                axisLabel: { fontSize: 12, color: '#94a3b8' },
+                                splitLine: { lineStyle: { color: '#eef2f6', type: 'dashed' } }
+                            },
+                            series: [{
+                                data: data.rates || [],
+                                type: 'bar',
+                                barWidth: '50%',
+                                itemStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: '#c4b5fd' },
+                                        { offset: 1, color: '#7c3aed' }
+                                    ]),
+                                    borderRadius: [8, 8, 0, 0]
+                                }
+                            }]
+                        };
+
+                    case 'rose':   // 外部标签：显示名称+百分比
+                        var names = data.names || [];
+                        var counts = data.counts || [];
+                        if (names.length === 0) {
+                            return {
+                                title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } }
+                            };
+                        }
+                        // 取前10，其余合并为“其他”
+                        var showCount = Math.min(names.length, 10);
+                        var displayNames = names.slice(0, showCount);
+                        var displayCounts = counts.slice(0, showCount);
+                        if (names.length > showCount) {
+                            displayNames.push('其他');
+                            var otherCount = counts.slice(showCount).reduce(function(a, b) { return a + b; }, 0);
+                            displayCounts.push(otherCount);
+                        }
+                        var roseData = displayNames.map(function(name, i) {
+                            return { name: name, value: displayCounts[i] };
+                        });
+                        return {
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: '{b}: {c} 人 ({d}%)'
+                            },
+                            legend: {
+                                type: 'scroll',
+                                orient: 'horizontal',
+                                bottom: 0,
+                                left: 'center',
+                                itemWidth: 14,
+                                itemHeight: 14,
+                                textStyle: { fontSize: 11, color: '#475569' },
+                                height: 40
+                            },
+                            series: [{
+                                type: 'pie',
+                                radius: ['20%', '70%'],
+                                center: ['50%', '44%'],
+                                roseType: 'area',
+                                itemStyle: {
+                                    borderRadius: 4,
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                },
+                                // ★ 外部标签，显示名称和百分比
+                                label: {
+                                    position: 'outer',
+                                    fontSize: 11,
+                                    color: '#475569',
+                                    formatter: '{b}\n{d}%',
+                                    lineHeight: 16,
+                                    align: 'center'
+                                },
+                                labelLine: {
+                                    length: 15,
+                                    length2: 10,
+                                    smooth: true
+                                },
+                                data: roseData,
+                                color: colorPalette
+                            }]
+                        };
+
+                    default:
+                        return null;
+                }
+            }
+
+            // KPI 滚动动画
+            function animateNumber(elementId, target, suffix, duration) {
+                var el = document.getElementById(elementId);
+                if (!el) return;
+                var start = 0;
+                var startTime = null;
+                suffix = suffix || '';
+                duration = duration || 1000;
+
+                function update(currentTime) {
+                    if (!startTime) startTime = currentTime;
+                    var progress = Math.min((currentTime - startTime) / duration, 1);
+                    var current = Math.floor(progress * target);
+                    el.textContent = current + suffix;
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    } else {
+                        el.textContent = target + suffix;
+                    }
+                }
+                requestAnimationFrame(update);
+            }
+
+            function loadOverview(callback) {
+                $.get('/api/stats/overview', function(res) {
+                    if (res.code === 200) {
+                        var d = res.data;
+                        animateNumber('stat-total', d.total, '', 1000);
+                        animateNumber('stat-attrition', d.attrition_count, '', 1000);
+                        animateNumber('stat-active', d.active_count, '', 1000);
+                        animateNumber('stat-rate', d.attrition_rate, '%', 1000);
+                    }
+                    if (callback) callback();
+                }).fail(function() { console.error('KPI加载失败'); if (callback) callback(); });
+            }
+
+            function loadRankTable() {
+                $.get('/api/stats/ranking', function(res) {
+                    if (res.code === 200) {
+                        var html = '';
+                        res.data.forEach(function(item, index) {
+                            var rankClass = 'rank-other';
+                            if (index === 0) rankClass = 'rank-1';
+                            else if (index === 1) rankClass = 'rank-2';
+                            else if (index === 2) rankClass = 'rank-3';
+                            var color = item.rate > 20 ? '#ef4444' : item.rate > 10 ? '#f59e0b' : '#10b981';
+                            html += '<tr>' +
+                                '<td><span class="rank-num ' + rankClass + '">' + (index + 1) + '</span></td>' +
+                                '<td><strong>' + item.Department + '</strong></td>' +
+                                '<td>' + item.total + '</td>' +
+                                '<td>' + item.attrition + '</td>' +
+                                '<td><span style="font-weight:600;color:' + color + ';">' + item.rate + '%</span></td>' +
+                                '</tr>';
+                        });
+                        $('#rank-table tbody').html(html);
+                    }
+                }).fail(function() { console.error('表格加载失败'); });
+            }
+        });
+    </script>
+</body>
+</html>

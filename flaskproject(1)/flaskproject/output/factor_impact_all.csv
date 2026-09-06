@@ -1,0 +1,31 @@
+类别,人数,离职率(%),因素
+Sales,448,20.8,Department
+Human Resources,64,18.8,Department
+Research & Development,960,14,Department
+Sales Representative,83,39.8,JobRole
+Laboratory Technician,259,23.9,JobRole
+Human Resources,52,21.2,JobRole
+Sales Executive,328,18,JobRole
+Research Scientist,293,16.4,JobRole
+Healthcare Representative,131,6.9,JobRole
+Manufacturing Director,144,6.9,JobRole
+Manager,103,4.9,JobRole
+Research Director,80,2.5,JobRole
+ Sales Executive,1,0,JobRole
+Manager ,1,0,JobRole
+Human Resources,27,25.9,EducationField
+Technical Degree,133,24.1,EducationField
+Marketing,160,22.5,EducationField
+Life Sciences,609,14.8,EducationField
+Medical,464,13.6,EducationField
+Other,82,13.4,EducationField
+Travel_Frequently,278,24.8,BusinessTravel
+Travel_Rarely,1046,15.1,BusinessTravel
+Non-Travel,151,7.9,BusinessTravel
+Single,472,25.8,MaritalStatus
+Married,675,12.4,MaritalStatus
+Divorced,328,10.1,MaritalStatus
+Male,883,17.1,Gender
+Female,590,14.9,Gender
+Yes,419,30.8,OverTime
+No,1056,10.4,OverTime

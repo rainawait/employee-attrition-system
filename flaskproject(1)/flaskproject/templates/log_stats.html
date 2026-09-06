@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>今日日志统计</title>
+<link rel="stylesheet" href="/static/css/layui.css">
+<script src="/static/js/echarts.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { padding:24px; background:linear-gradient(145deg,#f6f9fc 0%,#e9f0f5 100%); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1a2332; }
+
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.top-bar .brand { font-size:20px; font-weight:700; }
+.top-bar .brand i { color:#409eff; margin-right:6px; }
+
+.kpi-card { background:linear-gradient(135deg,#667eea,#764ba2); border-radius:16px; padding:22px 28px;
+    color:#fff; box-shadow:0 4px 20px rgba(102,126,234,0.3); margin-bottom:16px;
+    display:flex; align-items:center; justify-content:space-between; }
+.kpi-card .kpi-num { font-size:56px; font-weight:700; line-height:1; }
+.kpi-card .kpi-label { font-size:15px; opacity:0.85; margin-top:4px; }
+.kpi-card .kpi-icon { font-size:48px; opacity:0.3; }
+
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.05); overflow:hidden; }
+.card-header { font-weight:600; font-size:15px; padding:14px 20px; border-bottom:1px solid #f0f4f8;
+    display:flex; align-items:center; gap:8px; }
+.card-body { padding:14px; }
+.chart-box { width:100%; height:350px; }
+
+.type-table { width:100%; border-collapse:collapse; font-size:14px; }
+.type-table th { background:#f5f7fa; padding:10px 14px; text-align:left; color:#606266; }
+.type-table td { padding:10px 14px; border-bottom:1px solid #ebeef5; }
+.type-bar-wrap { display:flex; align-items:center; gap:8px; }
+.type-bar { height:18px; border-radius:9px; min-width:4px; transition:width 0.5s ease; }
+.type-count { font-weight:600; min-width:30px; text-align:right; }
+
+.action-tag { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; color:#fff; }
+.action-登录成功 { background:#5FB878; } .action-登录失败 { background:#FF5722; }
+.action-退出登录 { background:#909399; } .action-新增员工 { background:#409EFF; }
+.action-编辑员工 { background:#FF9800; } .action-删除员工 { background:#FF5722; }
+.action-单次预测 { background:#8B5CF6; } .action-批量预测 { background:#6366f1; }
+.action-生成报告 { background:#14B8A6; } .action-下载报告 { background:#5FB878; }
+.action-发送报告邮件 { background:#F59E0B; } .action-添加干预记录 { background:#FF9800; }
+.action-创建用户 { background:#409EFF; } .action-修改密码 { background:#909399; }
+
+.empty-state { text-align:center; padding:60px 20px; color:#c0c4cc; }
+.empty-state .icon { font-size:64px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand"><i class="layui-icon layui-icon-date"></i> 今日操作日志统计</div>
+    <span style="font-size:12px;color:#8c939d;" id="today-date"></span>
+</div>
+
+<div class="kpi-card">
+    <div>
+        <div class="kpi-num" id="total-num">0</div>
+        <div class="kpi-label">今日操作总次数</div>
+    </div>
+    <div class="kpi-icon"><i class="layui-icon layui-icon-log" style="font-size:72px;"></i></div>
+</div>
+
+<div class="chart-row">
+    <div class="card">
+        <div class="card-header"><i class="layui-icon layui-icon-chart" style="color:#667eea;"></i> 操作类型分布</div>
+        <div class="card-body"><div class="chart-box" id="pie-chart"></div></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><i class="layui-icon layui-icon-align-left" style="color:#409EFF;"></i> 操作类型排行</div>
+        <div class="card-body" id="rank-list" style="max-height:350px;overflow-y:auto;"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="layui-icon layui-icon-component"></i> 操作类型明细</div>
+    <div class="card-body" style="padding:0;">
+        <div id="detail-table"></div>
+    </div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['jquery'], function(){
+    var $ = layui.jquery;
+    // 显示今天日期
+    var now = new Date();
+    $('#today-date').text(now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日');
+
+    $.get('/log/api/stats/today', function(r){
+        if(r.code !== 0) return;
+        var d = r.data;
+        var total = d.today_total;
+        var types = d.type_distribution;
+
+        $('#total-num').text(total);
+
+        if(total === 0){
+            $('#pie-chart').html('<div class="empty-state"><div class="icon">📭</div>今日暂无操作记录</div>');
+            $('#rank-list').html('<div class="empty-state"><div style="font-size:14px;color:#c0c4cc;">暂无数据</div></div>');
+            return;
+        }
+
+        // Pie chart
+        var colors = ['#667eea','#764ba2','#f093fb','#f5576c','#4facfe','#00f2fe',
+                       '#43e97b','#38f9d7','#fa709a','#fee140','#30cfd0','#a8edea'];
+        var pie = echarts.init(document.getElementById('pie-chart'));
+        pie.setOption({
+            tooltip:{trigger:'item',formatter:'{b}: {c} 次 ({d}%)'},
+            legend:{type:'scroll',bottom:0,textStyle:{fontSize:11}},
+            series:[{type:'pie',radius:['40%','68%'],center:['50%','43%'],
+                roseType:'area',itemStyle:{borderRadius:6,borderColor:'#fff',borderWidth:2},
+                label:{formatter:'{b}\n{d}%',fontSize:11},
+                data:types.map(function(t,i){return {value:t.count,name:t.action,
+                    itemStyle:{color:colors[i%colors.length]}};})}]
+        });
+
+        // Rank list
+        var maxCount = types[0] ? types[0].count : 1;
+        var rankHtml = '';
+        types.forEach(function(t,i){
+            var pct = Math.round(t.count/maxCount*100);
+            rankHtml += '<div style="margin-bottom:8px;">' +
+                '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;">' +
+                '<span><span class="action-tag action-'+t.action+'">'+t.action+'</span></span>' +
+                '<span style="font-weight:600;">'+t.count+' 次</span></div>' +
+                '<div style="background:#ebeef5;border-radius:3px;height:6px;">' +
+                '<div style="background:'+colors[i%colors.length]+';height:6px;border-radius:3px;width:'+pct+'%;"></div>' +
+                '</div></div>';
+        });
+        $('#rank-list').html(rankHtml || '<div class="empty-state">暂无数据</div>');
+    });
+});
+</script>
+</body>
+</html>

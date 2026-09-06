@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>干预记录管理</title>
+<link rel="stylesheet" href="/static/css/layui.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { padding:24px; background:linear-gradient(145deg,#f6f9fc 0%,#e9f0f5 100%); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1a2332; }
+
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.top-bar .brand { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+.top-bar .brand i { color:#ff9800; margin-right:6px; }
+
+/* 统计卡片 */
+.stat-cards { display:flex; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+.stat-card { flex:1; min-width:130px; background:#fff; border-radius:12px; padding:16px 20px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.05); text-align:center; transition:transform .2s; }
+.stat-card:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+.stat-card .num { font-size:28px; font-weight:700; }
+.stat-card .label { font-size:12px; color:#8c939d; margin-top:4px; }
+
+.filter-bar { background:#fff; border-radius:12px; padding:14px 20px; margin-bottom:16px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04); display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.filter-bar select, .filter-bar input { height:36px; border:1px solid #dcdfe6; border-radius:6px;
+    padding:0 10px; font-size:13px; color:#333; outline:none; }
+.filter-bar select:focus, .filter-bar input:focus { border-color:#ff9800; }
+.filter-bar .date-row { display:flex; align-items:center; gap:6px; }
+.filter-bar .date-row input { width:115px; }
+
+.card { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.06); overflow-x:auto; }
+
+/* 类型标签 */
+.type-tag { display:inline-block; padding:2px 12px; border-radius:12px; font-size:12px; font-weight:600; color:#fff; }
+.type-调薪 { background:#409EFF; }
+.type-面谈 { background:#5FB878; }
+.type-转岗 { background:#FF9800; }
+.type-培训 { background:#8B5CF6; }
+.type-其他 { background:#909399; }
+
+/* 详情弹窗 */
+.detail-box { padding:12px 0; }
+.detail-box .row { display:flex; margin-bottom:10px; font-size:14px; }
+.detail-box .row .label { width:80px; color:#8c939d; flex-shrink:0; }
+.detail-box .row .val { color:#1a2332; flex:1; word-break:break-all; }
+.detail-box .row .val.desc { background:#f8fafc; padding:10px 14px; border-radius:8px;
+    border-left:3px solid #ff9800; line-height:1.7; }
+
+/* 员工信息卡片 */
+.emp-card { background:linear-gradient(135deg,#1B3A5C 0%,#2a5180 100%); border-radius:12px;
+    padding:18px 22px; color:#fff; margin-bottom:18px; display:flex; flex-wrap:wrap; gap:10px 24px; }
+.emp-card .item { font-size:13px; line-height:1.8; }
+.emp-card .item strong { font-size:15px; margin-right:2px; }
+.emp-card .risk-tag { display:inline-block; padding:2px 12px; border-radius:12px;
+    font-size:12px; font-weight:600; }
+.risk-high { background:#ff5722; color:#fff; }
+.risk-mid { background:#ffb800; color:#333; }
+.risk-low { background:#5fb878; color:#fff; }
+
+/* 时间线 */
+.timeline { position:relative; padding-left:28px; margin-left:8px; }
+.timeline::before { content:''; position:absolute; left:8px; top:4px; bottom:4px;
+    width:2px; background:#e0e4ea; border-radius:1px; }
+.timeline-item { position:relative; margin-bottom:16px; padding-bottom:2px; }
+.timeline-item::before { content:''; position:absolute; left:-24px; top:6px;
+    width:10px; height:10px; border-radius:50%; background:#fff; border:2px solid #409EFF;
+    z-index:1; }
+.timeline-item:last-child { margin-bottom:0; }
+.timeline-item .time { font-size:12px; color:#8c939d; margin-bottom:4px; }
+.timeline-item .content { background:#f8fafc; border-radius:8px; padding:10px 14px;
+    border-left:3px solid #409EFF; }
+.timeline-item .content .head { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.timeline-item .content .desc { font-size:13px; color:#475569; line-height:1.6; }
+.timeline-item .content .result { margin-top:6px; font-size:13px; color:#409EFF;
+    border-top:1px dashed #e0e4ea; padding-top:6px; }
+.timeline-empty { text-align:center; color:#c0c4cc; padding:30px 0; font-size:14px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand"><i class="layui-icon layui-icon-survey"></i> 干预记录管理</div>
+    <span style="font-size:12px;color:#8c939d;">风险预测 → 干预处理 → 效果追踪</span>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stat-cards">
+    <div class="stat-card"><div class="num" id="stat-total" style="color:#1a2332;">0</div><div class="label">总干预次数</div></div>
+    <div class="stat-card"><div class="num" id="stat-salary" style="color:#409EFF;">0</div><div class="label">调薪</div></div>
+    <div class="stat-card"><div class="num" id="stat-talk" style="color:#5FB878;">0</div><div class="label">面谈</div></div>
+    <div class="stat-card"><div class="num" id="stat-transfer" style="color:#FF9800;">0</div><div class="label">转岗</div></div>
+    <div class="stat-card"><div class="num" id="stat-train" style="color:#8B5CF6;">0</div><div class="label">培训</div></div>
+    <div class="stat-card"><div class="num" id="stat-other" style="color:#909399;">0</div><div class="label">其他</div></div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="filter-bar">
+    <select id="filter-type">
+        <option value="">全部类型</option>
+        <option value="调薪">调薪</option>
+        <option value="转岗">转岗</option>
+        <option value="面谈">面谈</option>
+        <option value="培训">培训</option>
+        <option value="其他">其他</option>
+    </select>
+    <div class="date-row">
+        <input type="text" id="filter-start" placeholder="开始日期" readonly>
+        <span style="color:#c0c4cc;">—</span>
+        <input type="text" id="filter-end" placeholder="结束日期" readonly>
+    </div>
+    <button class="layui-btn layui-btn-sm" id="btn-query" style="border-radius:6px;height:36px;line-height:36px;">
+        <i class="layui-icon layui-icon-search"></i> 查询
+    </button>
+    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btn-reset" style="border-radius:6px;height:36px;line-height:36px;">重置</button>
+    <a href="/predict/risk_list" target="mainFrame" style="margin-left:auto;">
+        <button class="layui-btn layui-btn-sm layui-btn-warm" style="border-radius:6px;height:36px;line-height:36px;">
+            <i class="layui-icon layui-icon-add-1"></i> 新增干预
+        </button>
+    </a>
+</div>
+
+<!-- 数据表格 -->
+<div class="card">
+    <table id="intervention-table" lay-filter="intervention-table"></table>
+</div>
+
+<!-- 员工干预时间线弹窗 -->
+<div id="timelineBox" style="display:none;padding:16px 20px 20px 20px;">
+    <!-- 员工信息卡片 -->
+    <div class="emp-card" id="emp-card"></div>
+    <!-- 干预历史时间线 -->
+    <div style="font-size:15px;font-weight:700;color:#1a2332;margin-bottom:12px;">
+        <i class="layui-icon layui-icon-log" style="color:#409EFF;"></i> 干预历史
+        <span id="timeline-count" style="font-size:12px;color:#8c939d;font-weight:400;"></span>
+    </div>
+    <div class="timeline" id="timeline-body"></div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['table', 'layer', 'laydate', 'form'], function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var laydate = layui.laydate;
+    var $ = layui.jquery;
+
+    // 日期选择器
+    laydate.render({elem:'#filter-start', type:'date', format:'yyyy-MM-dd'});
+    laydate.render({elem:'#filter-end', type:'date', format:'yyyy-MM-dd'});
+
+    // 表格渲染
+    var tableIns = table.render({
+        elem: '#intervention-table',
+        url: '/predict/api/interventions',
+        page: true,
+        limit: 15,
+        limits: [10, 15, 20, 50],
+        skin: 'line',
+        where: { type: '', start_date: '', end_date: '' },
+        cols: [[
+            {field: 'employee_number', title: '员工编号', width: 90, align: 'center'},
+            {field: 'department', title: '部门', width: 110},
+            {field: 'job_role', title: '岗位', width: 120},
+            {field: 'type', title: '干预类型', width: 90, align: 'center', templet: '#typeTpl'},
+            {field: 'description_short', title: '描述摘要', minWidth: 150},
+            {field: 'operator', title: '操作人', width: 80, align: 'center'},
+            {field: 'created_at', title: '操作时间', width: 150, align: 'center'},
+            {title: '操作', width: 130, align: 'center', templet: '#opBar', fixed: 'right'}
+        ]],
+        done: function(res) {
+            loadStats();  // 每次数据加载后刷新统计
+        }
+    });
+
+    // 类型标签颜色映射
+    var typeColors = {
+        '调薪': 'type-调薪', '面谈': 'type-面谈', '转岗': 'type-转岗',
+        '培训': 'type-培训', '其他': 'type-其他'
+    };
+    var typeBadgeColors = {
+        '调薪': '#409EFF', '面谈': '#5FB878', '转岗': '#FF9800',
+        '培训': '#8B5CF6', '其他': '#909399'
+    };
+
+    // 统计加载
+    function loadStats() {
+        $.get('/predict/api/interventions/stats', function(res) {
+            if (res.code === 0) {
+                var d = res.data;
+                $('#stat-total').text(d.total || 0);
+                $('#stat-salary').text(d['调薪'] || 0);
+                $('#stat-talk').text(d['面谈'] || 0);
+                $('#stat-transfer').text(d['转岗'] || 0);
+                $('#stat-train').text(d['培训'] || 0);
+                $('#stat-other').text(d['其他'] || 0);
+            }
+        });
+    }
+
+    // 行工具事件
+    table.on('tool(intervention-table)', function(obj) {
+        var d = obj.data;
+
+        if (obj.event === 'detail') {
+            // 加载员工信息 + 全部干预记录
+            var empId = d.employee_number;
+            $.get('/predict/api/interventions/employee/' + empId, function(res) {
+                if (res.code !== 0) {
+                    layer.msg(res.msg || '加载失败', {icon: 2});
+                    return;
+                }
+                var emp = res.data.employee;
+                var list = res.data.interventions;
+                var risk = res.data.risk_level;
+
+                // 渲染员工信息卡片
+                var riskHtml = risk ? '<span class="risk-tag risk-' +
+                    (risk === '高风险' ? 'high' : risk === '中风险' ? 'mid' : 'low') +
+                    '">' + risk + '</span>' : '<span style="color:#c0c4cc;">未评估</span>';
+
+                $('#emp-card').html(
+                    '<div class="item"><strong>#' + emp.employee_number + '</strong> ' + emp.department + '</div>' +
+                    '<div class="item">' + emp.job_role + ' | ' + emp.gender + '</div>' +
+                    '<div class="item">' + emp.age + '岁 | 司龄 ' + emp.years_at_company + '年</div>' +
+                    '<div class="item">月薪 ¥' + emp.monthly_income.toLocaleString() + '</div>' +
+                    '<div class="item">加班: ' + (emp.overtime === 'Yes' ? '是' : '否') +
+                    ' | 满意度: ' + (emp.job_satisfaction || '-') + '/4</div>' +
+                    '<div class="item">风险: ' + riskHtml + '</div>'
+                );
+
+                // 渲染时间线
+                $('#timeline-count').text('（共 ' + list.length + ' 条）');
+                var tlHtml = '';
+                if (list.length === 0) {
+                    tlHtml = '<div class="timeline-empty"><i class="layui-icon layui-icon-tips"></i> 暂无干预记录</div>';
+                } else {
+                    list.forEach(function(item) {
+                        tlHtml +=
+                            '<div class="timeline-item">' +
+                            '<div class="time">' + item.created_at + ' | ' + item.operator + '</div>' +
+                            '<div class="content">' +
+                            '<div class="head">' +
+                            '<span class="type-tag ' + (typeColors[item.type] || 'type-其他') + '">' + item.type + '</span>' +
+                            '</div>' +
+                            '<div class="desc">' + (item.description || '暂无描述') + '</div>' +
+                            (item.result ? '<div class="result">结果: ' + item.result + '</div>' : '') +
+                            '</div>' +
+                            '</div>';
+                    });
+                }
+                $('#timeline-body').html(tlHtml);
+
+                layer.open({
+                    type: 1,
+                    title: '员工干预时间线 - 工号 ' + empId,
+                    area: ['680px', '600px'],
+                    shadeClose: true,
+                    btn: ['关闭'],
+                    content: $('#timelineBox')
+                });
+            });
+        } else if (obj.event === 'del') {
+            // 删除
+            layer.confirm('确认删除该干预记录？', {icon: 3, title: '删除确认'}, function(index) {
+                layer.close(index);
+                $.ajax({
+                    url: '/predict/api/interventions/' + d.id,
+                    type: 'DELETE',
+                    success: function(res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                            tableIns.reload();
+                        } else {
+                            layer.msg(res.msg || '删除失败', {icon: 2});
+                        }
+                    }
+                });
+            });
+        }
+    });
+
+    // 查询
+    $('#btn-query').click(function() {
+        tableIns.reload({ where: {
+            type: $('#filter-type').val(),
+            start_date: $('#filter-start').val(),
+            end_date: $('#filter-end').val()
+        }});
+    });
+
+    // 重置
+    $('#btn-reset').click(function() {
+        $('#filter-type').val('');
+        $('#filter-start').val('');
+        $('#filter-end').val('');
+        tableIns.reload({ where: { type: '', start_date: '', end_date: '' } });
+    });
+
+    // 初始加载统计
+    loadStats();
+});
+</script>
+
+{% raw %}
+<script type="text/html" id="typeTpl">
+    <span class="type-tag type-{{d.type}}">{{d.type}}</span>
+</script>
+<script type="text/html" id="opBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail" style="margin-right:4px;">查看</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+{% endraw %}
+</body>
+</html>

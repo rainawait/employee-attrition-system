@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+
+        /* 页面头部 */
+        .page-header { margin-bottom: 18px; }
+        .page-header h2 { font-size: 22px; font-weight: 700; color: #1a2332; }
+        .page-header .sub { font-size: 13px; color: #8c939d; margin-top: 2px; }
+
+        /* 卡片容器 */
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            padding: 20px 24px;
+            margin-bottom: 18px;
+        }
+
+        /* 搜索栏 */
+        .search-card .layui-form-item { margin-bottom: 0; }
+        .search-card .layui-inline { margin-right: 10px; margin-bottom: 0; }
+        .search-card .layui-form-label {
+            background: #f5f7fa;
+            border-radius: 6px 0 0 6px;
+            border: 1px solid #e4e7ed;
+            border-right: none;
+            line-height: 36px;
+            height: 38px;
+            padding: 0 12px;
+            font-weight: 500;
+            color: #606266;
+            width: auto;
+        }
+        .search-card .layui-input-inline { width: 150px; }
+        .search-card .layui-input, .search-card .layui-select { height: 38px; border-radius: 0 6px 6px 0; }
+
+        /* 按钮 */
+        .btn-primary {
+            background: linear-gradient(135deg, #009688, #00796b) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            padding: 0 16px !important;
+            font-weight: 500 !important;
+            transition: all 0.2s;
+            box-shadow: 0 2px 10px rgba(0,150,136,0.3);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,150,136,0.4); }
+        .btn-primary-sm {
+            background: linear-gradient(135deg, #009688, #00796b) !important;
+            border: none !important;
+            border-radius: 6px !important;
+            font-weight: 500 !important;
+            font-size: 12px !important;
+            height: 28px !important;
+            line-height: 28px !important;
+            padding: 0 10px !important;
+        }
+
+        /* 表格美化 */
+        .table-card { padding: 0 0 0 0; overflow: hidden; }
+        .layui-table { margin: 0; }
+        .layui-table thead tr { background: #f8fafc; }
+        .layui-table th { font-weight: 600 !important; color: #303133 !important; border-color: #ebeef5 !important; padding: 12px 0 !important; }
+        .layui-table td { padding: 10px 0 !important; border-color: #ebeef5 !important; color: #606266; }
+        .layui-table tbody tr:hover { background: #f5f7fa !important; }
+
+        /* 状态标签 */
+        .tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .tag-success { background: #e8f5e9; color: #2e7d32; }
+        .tag-danger { background: #ffebee; color: #c62828; }
+        .tag-admin { background: #fff3e0; color: #e65100; }
+
+        /* 头像 */
+        .avatar-cell { height: 48px; line-height: 48px; padding: 4px 12px; }
+        .avatar-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 2px solid #e8ecf1; }
+        .avatar-default {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #e8ecf1, #d5dbe3);
+            color: #8c9ab3; vertical-align: middle;
+        }
+
+        /* 弹窗表单 */
+        .modal-form { padding: 10px 0; }
+        .modal-form .layui-form-label {
+            width: 85px; padding: 9px 10px 9px 0; font-weight: 500; color: #303133; text-align: right;
+        }
+        .modal-form .layui-input-block { margin-left: 95px; }
+
+        /* 详情卡片 */
+        .detail-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; padding: 16px; }
+        .detail-list dt { font-size: 12px; color: #8c939d; margin-bottom: 2px; }
+        .detail-list dd { font-size: 15px; color: #303133; font-weight: 500; margin: 0 0 8px 0; }
+
+        @media (max-width: 768px) {
+            .search-card .layui-input-inline { width: 120px; }
+            .detail-list { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h2>👥 用户管理</h2>
+    <p class="sub">管理系统用户账户、角色权限及状态</p>
+</div>
+
+<!-- 搜索栏 -->
+<div class="card search-card">
+    <form class="layui-form" lay-filter="searchForm">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">关键词</label>
+                <div class="layui-input-inline">
+                    <input type="text" name="keyword" placeholder="用户名/真实姓名" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">角色</label>
+                <div class="layui-input-inline">
+                    <select name="role">
+                        <option value="">全部</option>
+                        <option value="admin">管理员</option>
+                        <option value="user">普通用户</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">状态</label>
+                <div class="layui-input-inline">
+                    <select name="status">
+                        <option value="">全部</option>
+                        <option value="active">正常</option>
+                        <option value="disabled">禁用</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <button class="layui-btn btn-primary" lay-submit lay-filter="searchBtn">🔍 搜索</button>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn btn-primary" id="add-btn">＋ 添加用户</button>
+            </div>
+            <div class="layui-inline" style="border-left:1px solid #e4e7ed;padding-left:10px;margin-left:4px;">
+                <button type="button" class="layui-btn layui-btn" id="batch-enable-btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;border-radius:6px;height:38px;line-height:38px;font-weight:500;">批量启用</button>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn" id="batch-disable-btn" style="background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:6px;height:38px;line-height:38px;font-weight:500;">批量禁用</button>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn layui-btn-warm" id="exportExcelBtn" style="border-radius:6px;height:38px;line-height:38px;font-weight:500;">📥 导出Excel</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 行工具栏 -->
+<script type="text/html" id="toolbar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">详情</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="reset">重置</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">删除</a>
+</script>
+
+<!-- 表格 -->
+<div class="card table-card">
+    <table id="UserList" lay-filter="userTable"></table>
+</div>
+
+<!-- 添加/编辑弹窗 -->
+<div id="userModal" style="display:none;">
+    <form class="layui-form modal-form" id="userForm" lay-filter="userForm" style="padding:10px 20px;">
+        <input type="hidden" name="user_id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">用户名</label>
+            <div class="layui-input-block">
+                <input type="text" name="username" lay-verify="required" id="form-username" class="layui-input" placeholder="请输入用户名">
+            </div>
+        </div>
+        <div class="layui-form-item" id="pwd-item">
+            <label class="layui-form-label">密码</label>
+            <div class="layui-input-block">
+                <input type="password" name="password" lay-verify="required|pass" class="layui-input" placeholder="不少于6位">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">真实姓名</label>
+            <div class="layui-input-block">
+                <input type="text" name="real_name" lay-verify="required" class="layui-input" placeholder="请输入真实姓名">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">邮箱</label>
+            <div class="layui-input-block">
+                <input type="text" name="email" lay-verify="email" class="layui-input" placeholder="example@mail.com">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">手机号</label>
+            <div class="layui-input-block">
+                <input type="text" name="phone" class="layui-input" placeholder="请输入手机号">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">部门</label>
+            <div class="layui-input-block">
+                <input type="text" name="department" class="layui-input" placeholder="请输入部门">
+            </div>
+        </div>
+        <div class="layui-form-item" id="admin-item">
+            <label class="layui-form-label">角色</label>
+            <div class="layui-input-block">
+                <select name="role">
+                    <option value="user">普通用户</option>
+                    <option value="admin">管理员</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item" id="status-item">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-block">
+                <select name="status">
+                    <option value="active">正常</option>
+                    <option value="disabled">禁用</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:center;margin-top:20px;">
+            <button type="button" class="layui-btn layui-btn-primary" id="cancel-btn" style="border-radius:8px;margin-right:12px;">取消</button>
+            <button class="layui-btn btn-primary" lay-submit lay-filter="user-submit" id="submit-btn" style="padding:0 28px;">确认提交</button>
+        </div>
+    </form>
+</div>
+
+<!-- 重置密码弹窗 -->
+<div id="resetPwdModal" style="display:none;padding:20px;">
+    <form class="layui-form">
+        <input type="hidden" id="reset-user-id">
+        <div class="layui-form-item">
+            <label class="layui-form-label" style="width:80px;">新密码</label>
+            <div class="layui-input-block" style="margin-left:90px;">
+                <input type="password" id="new-password" lay-verify="required|pass" class="layui-input" placeholder="不少于6位">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:center;">
+            <button type="button" class="layui-btn layui-btn-primary" onclick="layer.closeAll()" style="border-radius:8px;margin-right:12px;">取消</button>
+            <button class="layui-btn btn-primary" type="button" id="confirm-reset-btn">确认重置</button>
+        </div>
+    </form>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+    layui.use(['table','form','layer','jquery'], function(){
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var $ = layui.$;
+        var modalIndex;
+
+        table.render({
+            elem: '#UserList',
+            url: '/user/api/users',
+            page: true,
+            cols: [[
+                {type: 'checkbox', fixed: 'left', width: 50},
+                {type: 'numbers', title: '#', width: 55, fixed: 'left'},
+                {
+                    field: 'avatar', title: '头像', width: 75,
+                    templet: function(d){
+                        if(d.avatar && d.avatar.trim() !== ""){
+                            return '<img src="'+ d.avatar +'" class="avatar-img">';
+                        } else {
+                            return '<span class="avatar-default"><i class="layui-icon layui-icon-username" style="font-size:20px;"></i></span>';
+                        }
+                    }
+                },
+                {field: 'username', title: '用户名'},
+                {field: 'real_name', title: '真实姓名'},
+                {field: 'department', title: '部门'},
+                {field: 'role', title: '角色', width: 105, templet: function(d){
+                    return d.role === 'admin' ? '<span class="tag tag-admin">管理员</span>' : '<span class="tag" style="background:#e3f2fd;color:#1565c0;">普通用户</span>';
+                }},
+                {field: 'status', title: '状态', width: 95, templet: function(d){
+                    return d.status === 'active'
+                        ? '<span class="tag tag-success">● 正常</span>'
+                        : '<span class="tag tag-danger">● 禁用</span>';
+                }},
+                {field: 'created_at', title: '创建时间', sort: true},
+                {title: '操作', toolbar: '#toolbar', width: 280}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function(data){
+            table.reload('UserList', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        $('#exportExcelBtn').click(function(){
+            var checkData = table.checkStatus('UserList').data;
+            var keyword = $("input[name='keyword']").val();
+            var role = $("select[name='role']").val();
+            var status = $("select[name='status']").val();
+            var params = new URLSearchParams();
+            params.append('keyword', keyword);
+            params.append('role', role);
+            params.append('status', status);
+            checkData.forEach(function(item){ params.append('ids', item.id); });
+            window.open('/user/api/export_user?' + params.toString());
+        });
+
+        $('#add-btn').click(function(){
+            $('#userForm')[0].reset();
+            $('input[name="user_id"]').val('');
+            $('#form-username').prop('disabled', false);
+            $('#pwd-item').show();
+            $('#admin-item').show();
+            $('#status-item').show();
+            $('#submit-btn').attr('lay-filter', 'user-add-submit').text('确认添加');
+            form.render();
+            modalIndex = layer.open({
+                type:1, title:'➕ 添加用户', area:['500px','560px'], content:$('#userModal')
+            });
+        });
+
+        $('#cancel-btn').click(function(){ layer.close(modalIndex); });
+
+        table.on('tool(userTable)', function(obj){
+            var data = obj.data;
+            if(obj.event === 'detail'){
+                layer.open({
+                    type:1, title:'📋 用户详情', area:['500px','360px'],
+                    content: `<div class="detail-list">
+                        <div><dt>用户名</dt><dd>${data.username}</dd></div>
+                        <div><dt>真实姓名</dt><dd>${data.real_name}</dd></div>
+                        <div><dt>邮箱</dt><dd>${data.email || '-'}</dd></div>
+                        <div><dt>手机号</dt><dd>${data.phone || '-'}</dd></div>
+                        <div><dt>部门</dt><dd>${data.department || '-'}</dd></div>
+                        <div><dt>角色</dt><dd>${data.role === 'admin' ? '<span class="tag tag-admin">管理员</span>' : '<span class="tag" style="background:#e3f2fd;color:#1565c0;">普通用户</span>'}</dd></div>
+                        <div><dt>状态</dt><dd>${data.status === 'active' ? '<span class="tag tag-success">正常</span>' : '<span class="tag tag-danger">禁用</span>'}</dd></div>
+                        <div><dt>创建时间</dt><dd style="font-size:13px;">${data.created_at}</dd></div>
+                    </div>`
+                });
+            } else if(obj.event === 'edit'){
+                $('input[name="user_id"]').val(data.id);
+                $('input[name="username"]').val(data.username);
+                $('#form-username').prop('disabled', true);
+                $('#pwd-item').hide();
+                $('input[name="real_name"]').val(data.real_name);
+                $('input[name="email"]').val(data.email);
+                $('input[name="phone"]').val(data.phone);
+                $('input[name="department"]').val(data.department);
+                $('select[name="role"]').val(data.role);
+                $('select[name="status"]').val(data.status);
+                $('#admin-item').show();
+                $('#status-item').show();
+                $('#submit-btn').attr('lay-filter', 'user-edit-submit').text('确认修改');
+                form.render();
+                modalIndex = layer.open({
+                    type:1, title:'✏️ 编辑用户', area:['500px','520px'], content:$('#userModal')
+                });
+            } else if(obj.event === 'delete'){
+                layer.confirm('<p style="font-size:15px;">确定删除该用户？</p><p style="color:#999;font-size:13px;">删除后无法恢复</p>', {icon:3, title:'⚠️ 删除确认', btn:['确认删除','取消']}, function(index){
+                    $.post('/user/api/delete', {user_id: data.id}, function(res){
+                        if(res.code === 0){
+                            layer.msg('✅ 删除成功', {icon:1});
+                            table.reload('UserList');
+                        } else { layer.msg(res.msg, {icon:2}); }
+                        layer.close(index);
+                    })
+                })
+            } else if(obj.event === 'reset'){
+                $('#reset-user-id').val(data.id);
+                $('#new-password').val('');
+                layer.open({
+                    type:1, title:'🔒 重置密码', area:['420px','200px'], content:$('#resetPwdModal')
+                });
+            }
+        });
+
+        $('#confirm-reset-btn').click(function(){
+            var newPwd = $('#new-password').val();
+            var uid = $('#reset-user-id').val();
+            if(!newPwd || newPwd.length < 6){ layer.msg('密码长度不少于6位', {icon:0}); return; }
+            $.post('/user/api/reset-password', {user_id: uid, new_password: newPwd}, function(res){
+                if(res.code === 0){ layer.msg('✅ 重置成功', {icon:1}); layer.closeAll(); }
+                else { layer.msg(res.msg, {icon:2}); }
+            })
+        });
+
+        $('#batch-enable-btn').click(function(){ batchUpdateStatus('active'); });
+        $('#batch-disable-btn').click(function(){ batchUpdateStatus('disabled'); });
+
+        function batchUpdateStatus(status){
+            var checkData = table.checkStatus('UserList').data;
+            if(checkData.length === 0){ layer.msg('请先勾选用户', {icon:0}); return; }
+            var ids = checkData.map(item=>item.id).join(',');
+            var statusText = status==='active' ? '启用' : '禁用';
+            layer.confirm(`确定批量${statusText}选中的 ${checkData.length} 个用户？`, {icon:3}, function(index){
+                $.post('/user/api/batch-status', {user_ids: ids, status: status}, function(res){
+                    if(res.code === 0){ layer.msg('✅ ' + res.msg, {icon:1}); table.reload('UserList'); }
+                    else { layer.msg(res.msg, {icon:2}); }
+                    layer.close(index);
+                })
+            })
+        }
+
+        form.on('submit(user-add-submit)', function(data){
+            $.post('/user/api/add', data.field, function(res){
+                if(res.code === 0){ layer.msg('✅ 添加成功', {icon:1}); layer.close(modalIndex); table.reload('UserList'); }
+                else { layer.msg(res.msg, {icon:2}); }
+            }); return false;
+        });
+
+        form.on('submit(user-edit-submit)', function(data){
+            $.post('/user/api/edit', data.field, function(res){
+                if(res.code === 0){ layer.msg('✅ 修改成功', {icon:1}); layer.close(modalIndex); table.reload('UserList'); }
+                else { layer.msg(res.msg, {icon:2}); }
+            }); return false;
+        });
+    });
+</script>
+</body>
+</html>

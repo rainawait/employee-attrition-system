@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>报告历史</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { padding:24px; background: linear-gradient(145deg, #f6f9fc 0%, #e9f0f5 100%); min-height:100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+
+        .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+        .top-bar .brand { font-size:20px; font-weight:700; color:#1a2332; letter-spacing:-0.5px; }
+        .top-bar .brand i { color:#409EFF; margin-right:6px; }
+
+        .stats-row { display:flex; gap:16px; margin-bottom:20px; }
+        .stat-card { flex:1; background:#fff; border-radius:14px; padding:16px 20px; box-shadow:0 2px 12px rgba(0,0,0,0.06); display:flex; align-items:center; gap:14px; transition:box-shadow .2s,transform .2s; }
+        .stat-card:hover { box-shadow:0 8px 28px rgba(0,0,0,0.1); transform:translateY(-2px); }
+        .stat-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+        .stat-icon.all { background:#edf4ff; color:#409EFF; }
+        .stat-icon.png { background:#e8f4fd; color:#409EFF; }
+        .stat-icon.excel { background:#e8f8e8; color:#5FB878; }
+        .stat-icon.pdf { background:#fde8e8; color:#FF5722; }
+        .stat-info .stat-num { font-size:28px; font-weight:700; color:#1a2332; line-height:1.1; }
+        .stat-info .stat-label { font-size:12px; color:#8c939d; }
+
+        .card { background:#fff; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.06); overflow:hidden; }
+        .card-header { padding:16px 24px; border-bottom:1px solid #f0f2f7; display:flex; align-items:center; gap:8px; }
+        .card-header .dot { width:7px; height:7px; border-radius:50%; background:#409EFF; box-shadow:0 0 0 4px rgba(64,158,255,0.15); }
+        .card-header span { font-size:16px; font-weight:700; color:#1a2332; }
+
+        .layui-table { margin:0; width:100% !important; table-layout:auto; }
+        .layui-table-box { width:100% !important; }
+        .layui-table thead tr { background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%) !important; }
+        .layui-table thead th { font-weight:600; color:#1a2332; border-bottom:none; font-size:12px; padding:8px 10px; }
+        .layui-table tbody td { padding:6px 10px; border-color:#f0f4f8; font-size:12px; }
+        .layui-table tbody tr:hover { background:#f6f9fc !important; }
+
+        .type-tag { display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700; }
+        .type-png { background:#e8f4fd; color:#409EFF; }
+        .type-excel { background:#e8f8e8; color:#5FB878; }
+        .type-pdf { background:#fde8e8; color:#FF5722; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand"><i class="layui-icon layui-icon-file"></i> 报告历史</div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="stats-row" id="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon all"><i class="layui-icon layui-icon-list"></i></div>
+        <div class="stat-info"><div class="stat-num" id="stat-all">0</div><div class="stat-label">总报告数</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon png"><i class="layui-icon layui-icon-picture"></i></div>
+        <div class="stat-info"><div class="stat-num" id="stat-png">0</div><div class="stat-label">PNG 报告</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon excel"><i class="layui-icon layui-icon-table"></i></div>
+        <div class="stat-info"><div class="stat-num" id="stat-excel">0</div><div class="stat-label">Excel 报告</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon pdf"><i class="layui-icon layui-icon-file"></i></div>
+        <div class="stat-info"><div class="stat-num" id="stat-pdf">0</div><div class="stat-label">PDF 报告</div></div>
+    </div>
+</div>
+
+<!-- 筛选条 -->
+<div class="card" style="padding:12px 20px; margin-bottom:18px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:#8c939d;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><i class="layui-icon layui-icon-search" style="font-size:13px;"></i> 筛选</span>
+        <select id="filter-type" style="height:32px;padding:0 8px;background:#f7f8fa;border:1px solid #e8ecf1;border-radius:6px;font-size:13px;color:#333;">
+            <option value="">全部类型</option>
+            <option value="PNG">PNG</option>
+            <option value="Excel">Excel</option>
+            <option value="PDF">PDF</option>
+        </select>
+        <input type="text" id="filter-date-start" placeholder="开始日期" readonly
+               style="width:110px;height:32px;padding:0 10px;background:#f7f8fa;border:1px solid #e8ecf1;border-radius:6px;font-size:12px;color:#333;">
+        <span style="color:#c0c4cc;">—</span>
+        <input type="text" id="filter-date-end" placeholder="结束日期" readonly
+               style="width:110px;height:32px;padding:0 10px;background:#f7f8fa;border:1px solid #e8ecf1;border-radius:6px;font-size:12px;color:#333;">
+        <button class="layui-btn layui-btn-sm layui-btn-normal" id="btn-filter" style="border-radius:6px;"><i class="layui-icon layui-icon-search"></i> 查询</button>
+        <button class="layui-btn layui-btn-sm layui-btn-primary" id="btn-reset" style="border-radius:6px;"><i class="layui-icon layui-icon-refresh"></i> 重置</button>
+    </div>
+</div>
+
+<!-- 表格卡片 -->
+<div class="card">
+    <div class="card-header">
+        <span class="dot"></span>
+        <span>历史记录</span>
+        <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="layui-btn layui-btn-sm layui-btn-normal" id="btn-batch-download" style="border-radius:6px;">
+                <i class="layui-icon layui-icon-download-circle"></i> 批量下载
+            </button>
+        </div>
+    </div>
+    <table id="history-table" lay-filter="history"></table>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['table', 'layer', 'laydate'], function(){
+    var table = layui.table, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
+
+    laydate.render({elem:'#filter-date-start',type:'date',format:'yyyy-MM-dd'});
+    laydate.render({elem:'#filter-date-end',type:'date',format:'yyyy-MM-dd'});
+
+    var tableIns = table.render({
+        elem: '#history-table',
+        url: '/predict/api/report/history',
+        page: true,
+        limit: 15,
+        skin: 'line',
+        where: {},
+        cols: [[
+            {type:'checkbox', width:40},
+            {field:'id', title:'#', width:45, align:'center'},
+            {field:'filename', title:'文件名', width:145, templet: function(d){
+                var icon = d.file_type === 'PNG' ? 'layui-icon-picture' : d.file_type === 'Excel' ? 'layui-icon-table' : 'layui-icon-file';
+                return '<a href="/predict/api/report/download/'+d.id+'" style="color:#409EFF;" title="'+d.filename+'"><i class="layui-icon '+icon+'" style="margin-right:3px;color:#999;font-size:12px;"></i>'+d.filename+'</a>';
+            }},
+            {field:'file_type', title:'类型', width:65, align:'center', templet: function(d){
+                var cls = d.file_type === 'PNG' ? 'type-png' : d.file_type === 'Excel' ? 'type-excel' : 'type-pdf';
+                return '<span class="type-tag '+cls+'">'+d.file_type+'</span>';
+            }},
+            {field:'file_size', title:'大小', width:70, align:'center', templet: function(d){
+                var s = d.file_size;
+                return s > 1024*1024 ? (s/1024/1024).toFixed(1)+' MB' : s > 1024 ? (s/1024).toFixed(1)+' KB' : s+' B';
+            }},
+            {field:'filters', title:'筛选条件', width:125, templet: function(d){
+                try { var f=JSON.parse(d.filters||'{}'),p=[]; if(f.departments&&f.departments.length) p.push(f.departments.join(',')); if(f.risk_level){var rl={high:'高风险',mid:'中风险',low:'低风险'};p.push(rl[f.risk_level]||f.risk_level);} if(f.date_start)p.push(f.date_start); return p.join(' | ')||'全部'; } catch(e){return'全部';}
+            }},
+            {field:'generated_by', title:'生成人', width:65, align:'center'},
+            {field:'created_at', title:'时间', width:140},
+            {field:'', title:'操作', width:155, align:'center', templet: function(d){
+                return '<a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="download">下载</a> '
+                     + '<a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">删除</a>';
+            }}
+        ]],
+        done: function(res) { updateStats(res.data); }
+    });
+
+    // 筛选
+    $('#btn-filter').click(function(){
+        tableIns.reload({where:{
+            file_type: $('#filter-type').val(),
+            date_start: $('#filter-date-start').val(),
+            date_end: $('#filter-date-end').val()
+        }});
+    });
+    $('#btn-reset').click(function(){
+        $('#filter-type').val(''); $('#filter-date-start').val(''); $('#filter-date-end').val('');
+        tableIns.reload({where:{}});
+    });
+
+    // 批量下载
+    $('#btn-batch-download').click(function(){
+        var checkStatus = table.checkStatus('history-table');
+        if (checkStatus.data.length === 0) {
+            layer.msg('请先勾选要下载的报告', {icon: 0});
+            return;
+        }
+        var ids = checkStatus.data.map(function(r){ return r.id; });
+        var url = '/predict/api/report/batch_download?ids=' + ids.join(',');
+        layer.msg('正在打包 ' + ids.length + ' 个文件...', {icon: 16, time: 2000});
+        window.open(url);
+    });
+
+    table.on('tool(history)', function(obj){
+        if (obj.event === 'download') {
+            window.open('/predict/api/report/download/' + obj.data.id);
+        } else if (obj.event === 'delete') {
+            layer.confirm('确认删除该报告？服务器文件也将被永久删除。', {icon:3, title:'删除确认'}, function(i){
+                layer.close(i);
+                $.ajax({url:'/predict/api/report/delete/'+obj.data.id,type:'DELETE',success:function(r){
+                    if(r.code===0){layer.msg('已删除',{icon:1});obj.del();}else{layer.msg(r.msg,{icon:2});}
+                }});
+            });
+        }
+    });
+
+    function updateStats(data) {
+        var png=0,excel=0,pdf=0;
+        (data||[]).forEach(function(d){if(d.file_type==='PNG')png++;else if(d.file_type==='Excel')excel++;else pdf++;});
+        $('#stat-all').text((data||[]).length); $('#stat-png').text(png); $('#stat-excel').text(excel); $('#stat-pdf').text(pdf);
+    }
+});
+</script>
+</body>
+</html>

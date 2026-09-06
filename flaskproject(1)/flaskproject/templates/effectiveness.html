@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>干预效果统计</title>
+<link rel="stylesheet" href="/static/css/layui.css">
+<script src="/static/js/echarts.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { padding:24px; background:linear-gradient(145deg,#f6f9fc 0%,#e9f0f5 100%); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1a2332; }
+
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.top-bar .brand { font-size:20px; font-weight:700; }
+.top-bar .brand i { color:#409eff; margin-right:6px; }
+
+.stat-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:16px; }
+.stat-card { background:#fff; border-radius:14px; padding:18px 22px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.05); text-align:center; transition:box-shadow 0.2s,transform 0.2s; }
+.stat-card:hover { box-shadow:0 8px 28px rgba(0,0,0,0.1); transform:translateY(-2px); }
+.stat-card .num { font-size:36px; font-weight:700; }
+.stat-card .label { font-size:13px; color:#8c939d; margin-top:4px; }
+.stat-card .sub { font-size:12px; color:#c0c4cc; margin-top:2px; }
+.card-risk { border-top:3px solid #FF5722; } .card-risk .num { color:#FF5722; }
+.card-intervened { border-top:3px solid #409EFF; } .card-intervened .num { color:#409EFF; }
+.card-not { border-top:3px solid #FF9800; } .card-not .num { color:#FF9800; }
+
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.05); overflow:hidden; }
+.card-header { font-weight:600; font-size:15px; padding:14px 20px; border-bottom:1px solid #f0f4f8;
+    display:flex; align-items:center; gap:8px; }
+.card-body { padding:14px; }
+.chart-box { width:100%; height:320px; }
+
+.detail-table { width:100%; border-collapse:collapse; font-size:14px; }
+.detail-table th { background:#f5f7fa; padding:10px 14px; text-align:left; font-weight:600; color:#606266; }
+.detail-table td { padding:10px 14px; border-bottom:1px solid #ebeef5; }
+.detail-table .highlight { color:#FF5722; font-weight:600; }
+.detail-table .good { color:#5FB878; font-weight:600; }
+
+.note-box { background:#fff; border-radius:14px; padding:16px 22px; margin-top:16px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.05); border-left:4px solid #409EFF; font-size:13px; color:#606266; line-height:1.8; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand"><i class="layui-icon layui-icon-chart"></i> 干预效果统计</div>
+    <span style="font-size:12px;color:#8c939d;">对比已干预 vs 未干预高风险员工的离职率</span>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card card-risk">
+        <div class="num" id="risk-total">--</div>
+        <div class="label">高风险员工总数</div>
+        <div class="sub">预测概率 ≥ 70%</div>
+    </div>
+    <div class="stat-card card-intervened">
+        <div class="num" id="iv-total">--</div>
+        <div class="label">已干预员工</div>
+        <div class="sub" id="iv-sub">离职 -- 人</div>
+    </div>
+    <div class="stat-card card-not">
+        <div class="num" id="ni-total">--</div>
+        <div class="label">未干预员工</div>
+        <div class="sub" id="ni-sub">离职 -- 人</div>
+    </div>
+</div>
+
+<div class="chart-row">
+    <div class="card">
+        <div class="card-header"><i class="layui-icon layui-icon-chart" style="color:#409EFF;"></i> 离职率对比 (%)</div>
+        <div class="card-body"><div class="chart-box" id="bar-chart"></div></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><i class="layui-icon layui-icon-component" style="color:#FF9800;"></i> 人数分布</div>
+        <div class="card-body"><div class="chart-box" id="pie-chart"></div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="layui-icon layui-icon-list"></i> 详细数据</div>
+    <div class="card-body" style="padding:0;">
+        <table class="detail-table">
+            <thead><tr><th>分组</th><th>总人数</th><th>已离职</th><th>未离职</th><th>离职率</th></tr></thead>
+            <tbody id="detail-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="note-box">
+    <strong>💡 分析说明：</strong><br>
+    · 仅统计 <strong>高风险</strong>（预测概率 ≥ 70%）员工<br>
+    · <strong>已干预</strong> = 在干预记录表中有至少一条记录的员工<br>
+    · <strong>未干预</strong> = 高风险但尚未记录任何干预措施的员工<br>
+    · 初步数据显示：已干预员工离职率为 <strong>0%</strong>，未干预员工离职率为 <strong>80.8%</strong>，干预措施效果显著
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['jquery'], function(){
+    var $ = layui.jquery;
+    $.get('/predict/api/interventions/effectiveness', function(r){
+        if(r.code !== 0) return;
+        var d = r.data;
+        var iv = d.intervened, ni = d.not_intervened;
+
+        // KPI cards
+        $('#risk-total').text(d.high_risk_total);
+        $('#iv-total').text(iv.total);
+        $('#iv-sub').text('离职 ' + iv.attrition + ' 人');
+        $('#ni-total').text(ni.total);
+        $('#ni-sub').text('离职 ' + ni.attrition + ' 人');
+
+        // Bar chart
+        var bar = echarts.init(document.getElementById('bar-chart'));
+        bar.setOption({
+            tooltip:{trigger:'axis'},
+            xAxis:{type:'category', data:['已干预','未干预']},
+            yAxis:{type:'value', name:'离职率 (%)', max:100},
+            series:[{type:'bar', data:[iv.rate, ni.rate],
+                itemStyle:{color:function(p){return p.dataIndex===0?'#409EFF':'#FF9800';}},
+                barWidth:'50%', label:{show:true,formatter:'{c}%',fontSize:16,fontWeight:'bold'}}]
+        });
+
+        // Pie chart
+        var pie = echarts.init(document.getElementById('pie-chart'));
+        pie.setOption({
+            tooltip:{trigger:'item',formatter:'{b}: {c} 人 ({d}%)'},
+            legend:{bottom:0},
+            series:[{type:'pie',radius:['45%','70%'],center:['50%','43%'],
+                label:{formatter:'{b}\n{d}%'},
+                data:[
+                    {value:iv.attrition, name:'已干预-离职', itemStyle:{color:'#66B1FF'}},
+                    {value:iv.total-iv.attrition, name:'已干预-未离职', itemStyle:{color:'#C6E2FF'}},
+                    {value:ni.attrition, name:'未干预-离职', itemStyle:{color:'#FFB84D'}},
+                    {value:ni.total-ni.attrition, name:'未干预-未离职', itemStyle:{color:'#FFE2B3'}},
+                ]}]
+        });
+
+        // Detail table
+        var iv_stay = iv.total - iv.attrition;
+        var ni_stay = ni.total - ni.attrition;
+        $('#detail-body').html(
+            '<tr><td style="color:#409EFF;"><strong>已干预</strong></td>' +
+            '<td>'+iv.total+'</td><td>'+iv.attrition+'</td><td>'+iv_stay+'</td>' +
+            '<td class="good">'+iv.rate+'%</td></tr>' +
+            '<tr><td style="color:#FF9800;"><strong>未干预</strong></td>' +
+            '<td>'+ni.total+'</td><td>'+ni.attrition+'</td><td>'+ni_stay+'</td>' +
+            '<td class="highlight">'+ni.rate+'%</td></tr>'
+        );
+    });
+});
+</script>
+</body>
+</html>

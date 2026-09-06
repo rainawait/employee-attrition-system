@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>用户注册</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        body {
+            background-color: #f2f2f2;
+            background-image: linear-gradient(120deg, #8ee4ea 0%, #51a0f1 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .register-container {
+            width: 420px;
+            background-color: #fff;
+            padding: 30px 35px;
+            border-radius: 8px;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.2);
+        }
+
+        .register-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .layui-form-item {
+            margin-bottom: 20px;
+        }
+
+        .layui-btn-fluid {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .register-footer {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .layui-input-block {
+            margin-left: 0 !important;
+        }
+    </style>
+</head>
+<body>
+<div class="register-container">
+    <div class="register-title">用户注册</div>
+
+    <form class="layui-form" action="">
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <input type="text" name="username" required
+                       lay-verify="required" placeholder="请输入用户名"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <input type="password" name="password" required
+                       lay-verify="required" placeholder="请输入密码"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <input type="password" name="repassword" required
+                       lay-verify="required|repasswordEqual" placeholder="请确认密码"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button class="layui-btn layui-btn-normal layui-btn-fluid"
+                        lay-submit lay-filter="registerSubmit">立即注册</button>
+            </div>
+        </div>
+
+        <div class="register-footer">
+            已有账号？<a href="/" style="color: #1e9fff;">返回登录</a>
+        </div>
+    </form>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['form', 'layer'], function(){
+    var form = layui.form;
+    var layer = layui.layer;
+    var $ = layui.jquery;
+
+    // 自定义验证：确认密码必须与密码一致
+    form.verify({
+        repasswordEqual: function(value, item){
+            var password = $('input[name="password"]').val();
+            if(value !== password){
+                return '两次输入的密码不一致';
+            }
+        }
+    });
+
+    // 监听提交
+    form.on('submit(registerSubmit)', function(data){
+        var loadIndex = layer.msg('注册中...', {icon: 16, shade: 0.3, time: 0});
+        $.ajax({
+            url: '/register',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data.field),
+            dataType: 'json',
+            success: function(res){
+                layer.close(loadIndex);
+                if(res.code === 200){
+                    layer.msg('注册成功', {icon: 1}, function(){
+                        window.location.href = '/'; // 注册成功跳转到登录页
+                    });
+                } else {
+                    layer.msg(res.msg || '注册失败', {icon: 2});
+                }
+            },
+            error: function(){
+                layer.close(loadIndex);
+                layer.msg('网络异常，请稍后再试', {icon: 2});
+            }
+        });
+        return false;
+    });
+});
+</script>
+</body>
+</html>

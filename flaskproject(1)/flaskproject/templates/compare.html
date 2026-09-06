@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>对比分析</title>
+<link rel="stylesheet" href="/static/css/layui.css">
+<script src="/static/js/echarts.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { padding:24px; background:linear-gradient(145deg,#f6f9fc 0%,#e9f0f5 100%); min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1a2332; }
+
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.top-bar .brand { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+.top-bar .brand i { color:#409EFF; margin-right:6px; }
+
+.card { background:#fff; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.06); padding:20px 24px; margin-bottom:18px; transition:box-shadow .2s; }
+.card:hover { box-shadow:0 8px 32px rgba(0,0,0,0.09); }
+.card-header { font-size:17px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.card-header .dot { width:8px; height:8px; border-radius:50%; background:#409EFF; box-shadow:0 0 0 5px rgba(64,158,255,0.12); }
+
+.filter-group { display:flex; flex-direction:column; gap:4px; }
+.filter-group label { font-size:11px; font-weight:600; color:#8c939d; text-transform:uppercase; letter-spacing:0.5px; }
+.filter-group select, .filter-group input { height:32px; padding:0 10px; background:#f7f8fa; border:1px solid #e8ecf1; border-radius:6px; font-size:13px; color:#333; outline:none; transition:border-color .2s; }
+.filter-group select:focus, .filter-group input:focus { border-color:#409EFF; background:#fff; }
+.filter-group .date-row { display:flex; align-items:center; gap:6px; }
+.filter-group .date-row input { width:115px; }
+
+.chart-box { width:100%; height:500px; }
+
+.layui-table { margin:0; }
+.layui-table thead tr { background:linear-gradient(135deg,#f8fafc 0%,#eef2f7 100%) !important; }
+.layui-table thead th { font-weight:600; font-size:12px; padding:10px 12px; color:#1a2332; }
+.layui-table tbody td { padding:8px 12px; font-size:12px; text-align:center; }
+.layui-table tbody td:first-child { text-align:left; }
+.layui-table tbody tr:hover { background:#f6f9fc !important; }
+
+.up { color:#FF5722; font-weight:700; }
+.down { color:#5FB878; font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand"><i class="layui-icon layui-icon-chart-screen"></i> 对比分析</div>
+    <span style="font-size:12px;color:#8c939d;">多维度 · 双时段数据对比</span>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="dot"></span> 对比条件</div>
+    <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+        <div class="filter-group">
+            <label>对比维度</label>
+            <select id="dim" style="width:130px;">
+                <option value="Department">按部门</option>
+                <option value="JobRole">按岗位</option>
+                <option value="AgeGroup">按年龄段</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>时段 A</label>
+            <div class="date-row">
+                <input type="text" id="date-a-start" placeholder="开始日期" readonly>
+                <span style="color:#c0c4cc;">—</span>
+                <input type="text" id="date-a-end" placeholder="结束日期" readonly>
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>时段 B</label>
+            <div class="date-row">
+                <input type="text" id="date-b-start" placeholder="开始日期" readonly>
+                <span style="color:#c0c4cc;">—</span>
+                <input type="text" id="date-b-end" placeholder="结束日期" readonly>
+            </div>
+        </div>
+        <button class="layui-btn layui-btn-normal layui-btn-sm" id="btn-compare" style="border-radius:6px;height:32px;line-height:32px;">
+            <i class="layui-icon layui-icon-search"></i> 生成对比
+        </button>
+    </div>
+</div>
+
+<div class="card" id="resultCard" style="display:none;padding:16px 16px 8px;">
+    <div class="card-header" style="margin-bottom:6px;"><span class="dot"></span> 对比图表</div>
+    <div id="compare-chart" class="chart-box"></div>
+</div>
+
+<div class="card" id="tableCard" style="display:none;">
+    <div class="card-header"><span class="dot"></span> 数据明细</div>
+    <div style="overflow-x:auto;">
+    <table class="layui-table" lay-skin="line">
+        <thead><tr><th></th><th>时段A 总数</th><th>时段A 离职</th><th>时段A 离职率</th><th>时段B 总数</th><th>时段B 离职</th><th>时段B 离职率</th><th>差异</th><th>变化</th></tr></thead>
+        <tbody id="compare-tbody"></tbody>
+    </table>
+    </div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['layer','laydate'], function(){
+    var $ = layui.$, layer = layui.layer, laydate = layui.laydate;
+
+    laydate.render({elem:'#date-a-start',type:'date',format:'yyyy-MM-dd'});
+    laydate.render({elem:'#date-a-end',type:'date',format:'yyyy-MM-dd'});
+    laydate.render({elem:'#date-b-start',type:'date',format:'yyyy-MM-dd'});
+    laydate.render({elem:'#date-b-end',type:'date',format:'yyyy-MM-dd'});
+
+    var chartDom = document.getElementById('compare-chart');
+    var myChart = echarts.init(chartDom);
+
+    $('#btn-compare').click(function(){
+        var params = {
+            dim: $('#dim').val(),
+            a_start: $('#date-a-start').val(), a_end: $('#date-a-end').val(),
+            b_start: $('#date-b-start').val(), b_end: $('#date-b-end').val()
+        };
+        $.get('/predict/api/compare', params, function(res){
+            if (res.code !== 0) { layer.msg(res.msg||'错误',{icon:2}); return; }
+            var d = res.data;
+            $('#resultCard,#tableCard').show();
+            myChart.resize();
+
+            myChart.setOption({
+                tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+                legend:{data:['时段A离职率','时段B离职率'],bottom:0,textStyle:{fontSize:12}},
+                grid:{left:'5%',right:'5%',bottom:'10%',top:'5%',containLabel:true},
+                xAxis:{type:'category',data:d.labels,axisLabel:{rotate:20,fontSize:12,color:'#475569'}},
+                yAxis:{type:'value',name:'离职率 (%)',nameTextStyle:{fontSize:12,color:'#94a3b8'}},
+                series:[
+                    {name:'时段A离职率',type:'bar',data:d.a_rates,barGap:'8%',barWidth:'40%',
+                     itemStyle:{color:'#409EFF',borderRadius:[4,4,0,0]}},
+                    {name:'时段B离职率',type:'bar',data:d.b_rates,barGap:'8%',barWidth:'40%',
+                     itemStyle:{color:'#C9A96E',borderRadius:[4,4,0,0]}}
+                ]
+            }, true);
+
+            var html = '';
+            d.labels.forEach(function(l,i){
+                var diff = (d.b_rates[i]-d.a_rates[i]).toFixed(1);
+                var dir = diff > 0 ? '<span class="up">↑ '+diff+'%</span>' : diff < 0 ? '<span class="down">↓ '+Math.abs(diff)+'%</span>' : '<span style="color:#999;">-</span>';
+                html += '<tr><td><strong>'+l+'</strong></td>'
+                    +'<td>'+d.a_totals[i]+'</td><td>'+d.a_att[i]+'</td><td>'+d.a_rates[i]+'%</td>'
+                    +'<td>'+d.b_totals[i]+'</td><td>'+d.b_att[i]+'</td><td>'+d.b_rates[i]+'%</td>'
+                    +'<td>'+diff+'%</td><td>'+dir+'</td></tr>';
+            });
+            $('#compare-tbody').html(html);
+        });
+    });
+});
+</script>
+</body>
+</html>

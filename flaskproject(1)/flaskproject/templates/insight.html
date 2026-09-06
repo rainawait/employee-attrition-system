@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>离职洞察</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { padding:24px; background: linear-gradient(145deg, #f6f9fc 0%, #e9f0f5 100%); min-height:100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:#1a2332; }
+
+        .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+        .top-bar .brand { font-size:20px; font-weight:700; color:#1a2332; letter-spacing:-0.5px; }
+        .top-bar .brand i { color:#409EFF; margin-right:6px; }
+
+        .card { background:#fff; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.06); padding:20px 24px 24px; margin-bottom:18px; transition:box-shadow .2s; }
+        .card:hover { box-shadow:0 8px 32px rgba(0,0,0,0.09); }
+        .card-header { font-size:18px; font-weight:700; color:#1a2332; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+        .card-header .dot { width:8px; height:8px; border-radius:50%; background:#409EFF; box-shadow:0 0 0 5px rgba(64,158,255,0.12); }
+        .card-sub { color:#8c939d; font-size:13px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f0f2f7; }
+
+        #radar-chart { width:100%; height:520px; min-height:400px; }
+
+        /* 筛选表单 */
+        .filter-group { display:flex; align-items:center; gap:4px; }
+        .filter-label { font-size:11px; font-weight:600; color:#8c939d; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+        .filter-dropdown { display:flex; align-items:center; justify-content:space-between; min-width:140px; height:32px; padding:0 10px; background:#f7f8fa; border:1px solid #e8ecf1; border-radius:6px; cursor:pointer; font-size:13px; color:#333; transition:all .2s; }
+        .filter-dropdown:hover { border-color:#409EFF; background:#fff; }
+        .filter-select { height:32px; padding:0 8px; background:#f7f8fa; border:1px solid #e8ecf1; border-radius:6px; font-size:13px; color:#333; outline:none; cursor:pointer; }
+        .filter-select:focus { border-color:#409EFF; background:#fff; }
+        .filter-date { width:105px; height:32px; padding:0 10px; background:#f7f8fa; border:1px solid #e8ecf1; border-radius:6px; font-size:12px; color:#333; outline:none; cursor:pointer; }
+        .filter-date:focus { border-color:#409EFF; background:#fff; }
+        .filter-check { display:flex; align-items:center; gap:4px; cursor:pointer; font-size:12px; color:#7e8c9e; user-select:none; }
+        .filter-check input { accent-color:#409EFF; width:15px; height:15px; cursor:pointer; }
+
+        /* 洞察分析 */
+        .insight-box { background: linear-gradient(135deg, #f8faff 0%, #f0f5ff 100%); border-radius:10px; padding:14px 20px; margin-top:18px; border-left:5px solid #409eff; }
+        .insight-box ul { list-style:none; padding:0; margin:0; line-height:2.3; font-size:14px; }
+        .insight-box ul li { display:flex; align-items:flex-start; gap:6px; }
+        .insight-box .risk-dot { font-size:16px; line-height:1.6; flex-shrink:0; }
+        .dot-high { color:#FF5722; }
+        .dot-mid { color:#FFB800; }
+        .dot-low { color:#5FB878; }
+
+        .loading-area { text-align:center; padding:60px 0; color:#999; }
+        .error-area { text-align:center; padding:50px 20px; }
+        .error-area .layui-icon { font-size:48px; color:#f44336; }
+        .error-area p { margin:12px 0; font-size:15px; font-weight:500; color:#666; }
+        .error-area button { margin-top:10px; border-radius:6px; }
+
+        @media (max-width: 768px) {
+            #radar-chart { height:340px; }
+            .card { padding:14px; }
+            body { padding:12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand"><i class="layui-icon layui-icon-chart-screen"></i> 离职洞察</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:12px;color:#8c939d;">高 / 中 / 低风险群体画像分析</span>
+        <button class="layui-btn layui-btn-sm" id="btn-generate-analysis"
+                style="border-radius:6px; background:linear-gradient(135deg, #409EFF 0%, #5b8def 100%); border:none;
+                       box-shadow:0 2px 10px rgba(64,158,255,0.25);">
+            <i class="layui-icon layui-icon-chart" style="font-size:14px;"></i> 生成分析报告
+        </button>
+    </div>
+</div>
+
+<!-- ========== 筛选卡片 ========== -->
+<div class="card" style="padding:12px 20px; margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:#8c939d;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;">
+                <i class="layui-icon layui-icon-search" style="font-size:13px;"></i> 筛选条件
+            </span>
+            <div class="filter-group">
+                <label class="filter-label">部门</label>
+                <div id="dept-dropdown-trigger" class="filter-dropdown">
+                    <span id="dept-label">全部部门</span>
+                    <i class="layui-icon layui-icon-down" style="font-size:10px;color:#8c939d;"></i>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">风险等级</label>
+                <select id="risk-select" class="filter-select">
+                    <option value="">全部</option>
+                    <option value="high">高风险</option>
+                    <option value="mid">中风险</option>
+                    <option value="low">低风险</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">日期</label>
+                <input type="text" id="date-start" class="filter-date" placeholder="开始日期" readonly>
+                <span style="color:#c0c4cc;font-size:12px;">—</span>
+                <input type="text" id="date-end" class="filter-date" placeholder="结束日期" readonly>
+            </div>
+            <label class="filter-check">
+                <input type="checkbox" id="compare-mode">
+                <span>环比对比</span>
+            </label>
+        </div>
+        <div style="display:flex;gap:6px;">
+            <button class="layui-btn layui-btn-sm layui-btn-normal" id="btn-apply-filter" style="border-radius:6px;">
+                <i class="layui-icon layui-icon-search"></i> 应用
+            </button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="btn-reset-filter" style="border-radius:6px;">
+                <i class="layui-icon layui-icon-refresh"></i> 重置
+            </button>
+        </div>
+    </div>
+    <div id="dept-checkbox-panel" style="display:none;position:fixed;z-index:9999;background:#fff;border:1px solid #e8ecf1;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.12);padding:6px 0;min-width:200px;max-height:260px;overflow-y:auto;"></div>
+</div>
+
+<!-- ========== 雷达图卡片 ========== -->
+<div class="card" id="mainCard">
+    <div class="card-header">
+        <span class="dot"></span>
+        七大分析维度对比
+    </div>
+    <div class="card-sub">基于在职员工数据，对比高 / 中 / 低风险群体的核心特征差异</div>
+    <div id="radar-chart"></div>
+    <div class="insight-box" id="insightText">
+        <ul>
+            <li><span class="risk-dot dot-high">●</span> <strong>高风险</strong> 人群在 <strong>加班比例</strong> 维度明显凸出，说明加班是核心离职诱因。</li>
+            <li><span class="risk-dot dot-mid">●</span> <strong>中风险</strong> 人群在 <strong>工作满意度</strong> 和 <strong>工作生活平衡</strong> 维度偏低，提示改善空间。</li>
+            <li><span class="risk-dot dot-low">●</span> <strong>低风险</strong> 人群各项指标均衡，可作为留任策略参考基准。</li>
+        </ul>
+    </div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['layer', 'laydate', 'form'], function(){
+    var layer = layui.layer, laydate = layui.laydate, form = layui.form, $ = layui.$;
+
+    var currentFilters = { departments: [], risk_level: '', date_start: '', date_end: '', compare_mode: false };
+
+    // 日期选择器
+    laydate.render({ elem:'#date-start', type:'date', format:'yyyy-MM-dd', done:function(v){ currentFilters.date_start=v; }});
+    laydate.render({ elem:'#date-end',   type:'date', format:'yyyy-MM-dd', done:function(v){ currentFilters.date_end=v; }});
+
+    // 部门多选下拉
+    $.get('/predict/api/filters', function(res) {
+        if (res.code===0 && res.data && res.data.departments) {
+            var h = '';
+            res.data.departments.forEach(function(d) {
+                h += '<label style="display:flex;align-items:center;padding:7px 18px;cursor:pointer;font-size:13px;color:#333;gap:8px;">';
+                h += '<input type="checkbox" value="'+d+'" class="dept-cb" style="accent-color:#409eff;">'+d+'</label>';
+            });
+            $('#dept-checkbox-panel').html(h);
+        }
+    });
+    $('#dept-dropdown-trigger').click(function(e) {
+        e.stopPropagation();
+        var o = $(this).offset(), p = $('#dept-checkbox-panel');
+        p.css({display:'block',top:(o.top+$(this).outerHeight()+4)+'px',left:o.left+'px'});
+    });
+    $(document).click(function(){ $('#dept-checkbox-panel').hide(); });
+    $('#dept-checkbox-panel').click(function(e){ e.stopPropagation(); });
+    $('#dept-checkbox-panel').on('change','.dept-cb',function(){
+        var c=[]; $('#dept-checkbox-panel .dept-cb:checked').each(function(){ c.push($(this).val()); });
+        currentFilters.departments=c;
+        $('#dept-label').text(c.length===0?'全部部门':(c.length<=2?c.join(', '):c.length+' 个部门'));
+    });
+
+    // 筛选按钮
+    $('#btn-apply-filter').click(function(){
+        currentFilters.risk_level=$('#risk-select').val(); currentFilters.date_start=$('#date-start').val(); currentFilters.date_end=$('#date-end').val();
+        layer.msg('筛选条件已应用',{icon:1,time:1200});
+    });
+    $('#btn-reset-filter').click(function(){
+        currentFilters={departments:[],risk_level:'',date_start:'',date_end:'',compare_mode:false};
+        $('#risk-select').val(''); $('#date-start').val(''); $('#date-end').val(''); $('#compare-mode').prop('checked',false);
+        $('#dept-checkbox-panel .dept-cb').prop('checked',false); $('#dept-label').text('全部部门');
+        layer.msg('筛选条件已重置',{icon:1,time:1200});
+    });
+
+    // 雷达图
+    function initChart() {
+        if (typeof echarts==='undefined') {
+            var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js';
+            s.onload=function(){ renderChart(); }; s.onerror=function(){ showError('ECharts 库加载失败，请刷新重试'); };
+            document.head.appendChild(s); return;
+        }
+        renderChart();
+    }
+    function renderChart() {
+        var dom=document.getElementById('radar-chart'), mc=echarts.init(dom);
+        mc.showLoading('default',{text:'加载数据中...',color:'#409eff'});
+        $.ajax({url:'/predict/api/insight',type:'GET',dataType:'json',timeout:15000,
+            success:function(res){
+                mc.hideLoading();
+                if (res.code===0) {
+                    var d=res.data;
+                    if (!d.indicators||!d.indicators.length) { showError('暂无数据，请确保在职员工数量大于0'); return; }
+                    if (!d.high||!d.high.length) { showError('分组数据为空，可能没有高风险/中风险/低风险员工'); return; }
+                    mc.setOption({
+                        legend:{data:['高风险','中风险','低风险'],bottom:0,textStyle:{fontSize:13,fontWeight:500,color:'#333'},icon:'circle',itemWidth:10,itemHeight:10},
+                        radar:{indicator:d.indicators.map(function(i){return{name:i.name,max:i.max};}),center:['50%','50%'],radius:'68%',
+                            axisName:{color:'#2c3e50',fontSize:13,fontWeight:600},
+                            splitArea:{areaStyle:{color:['rgba(64,158,255,0.03)','rgba(64,158,255,0.06)']}},
+                            axisLine:{lineStyle:{color:'rgba(0,0,0,0.1)'}},splitLine:{lineStyle:{color:'rgba(0,0,0,0.08)'}}},
+                        series:[{type:'radar',
+                            data:[{value:d.high,name:'高风险',lineStyle:{color:'#FF5722',width:3},areaStyle:{color:'rgba(255,87,34,0.2)'},itemStyle:{color:'#FF5722'}},
+                                  {value:d.mid,name:'中风险',lineStyle:{color:'#FFB800',width:3},areaStyle:{color:'rgba(255,184,0,0.2)'},itemStyle:{color:'#FFB800'}},
+                                  {value:d.low,name:'低风险',lineStyle:{color:'#5FB878',width:3},areaStyle:{color:'rgba(95,184,120,0.2)'},itemStyle:{color:'#5FB878'}}],
+                            symbol:'circle',symbolSize:7}]
+                    });
+                    window.addEventListener('resize',function(){mc.resize();}); setTimeout(function(){mc.resize();},300);
+                } else { showError(res.msg||'数据加载失败'); }
+            },
+            error:function(xhr){ mc.hideLoading(); var m='网络错误，请检查后端服务'; if(xhr.responseJSON&&xhr.responseJSON.msg)m=xhr.responseJSON.msg; showError(m); }
+        });
+    }
+    function showError(msg) {
+        $('#mainCard').html('<div class="error-area"><i class="layui-icon layui-icon-face-cry"></i>'
+            +'<p>'+msg+'</p><button class="layui-btn layui-btn-sm" onclick="location.reload()" style="border-radius:6px;">重新加载</button>'
+            +' <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="initChart()" style="border-radius:6px;">重试</button></div>');
+    }
+
+    // 生成报告
+    $('#btn-generate-analysis').click(function(){
+        currentFilters.risk_level=$('#risk-select').val(); currentFilters.date_start=$('#date-start').val(); currentFilters.date_end=$('#date-end').val(); currentFilters.compare_mode=$('#compare-mode').is(':checked');
+        var loadIdx=layer.load(2,{shade:0.3});
+        $.ajax({url:'/predict/api/report/generate/analysis',type:'POST',contentType:'application/json',data:JSON.stringify(currentFilters),dataType:'json',timeout:30000
+        }).done(function(res){
+            if (res.code===200) {
+                var xhr=new XMLHttpRequest(); xhr.open('GET','/predict/api/report/download/analysis',true); xhr.responseType='blob'; xhr.timeout=15000;
+                xhr.onload=function(){
+                    layer.close(loadIdx);
+                    if (xhr.status===200) {
+                        var blobUrl=URL.createObjectURL(xhr.response);
+                        layer.open({type:1,title:'员工离职综合分析报告',area:['900px','620px'],shadeClose:true,
+                            content:'<div style="text-align:center;padding:15px 10px;">'
+                                +'<img src="'+blobUrl+'" alt="综合报告" style="max-width:100%;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.14);" />'
+                                +'<div style="margin-top:24px;display:flex;justify-content:center;flex-wrap:wrap;gap:10px;">'
+                                +'<div style="display:flex;gap:8px;padding-right:16px;margin-right:16px;border-right:1px solid #e8ecf1;">'
+                                +'<button class="layui-btn" id="btn-do-export" style="border-radius:6px;"><i class="layui-icon layui-icon-download-circle"></i> 下载 PNG</button>'
+                                +'<button class="layui-btn layui-btn-normal" id="btn-export-excel" style="border-radius:6px;"><i class="layui-icon layui-icon-table"></i> Excel</button>'
+                                +'<button class="layui-btn layui-btn-warm" id="btn-export-pdf" style="border-radius:6px;"><i class="layui-icon layui-icon-file"></i> PDF</button>'
+                                +'</div><div style="display:flex;gap:8px;">'
+                                +'<button class="layui-btn layui-btn-primary" id="btn-send-mail" style="border-radius:6px;"><i class="layui-icon layui-icon-email"></i> 发送邮件</button>'
+                                +'<button class="layui-btn layui-btn-primary" id="btn-cancel-preview" style="border-radius:6px;">关闭</button>'
+                                +'</div></div></div>',
+                            success:function(ly,idx){
+                                $('#btn-do-export').click(function(){var a=document.createElement('a');a.href='/predict/api/report/download/analysis';a.download='员工离职综合分析报告.png';document.body.appendChild(a);a.click();a.remove();layer.close(idx);layer.msg('开始下载...',{icon:1});});
+                                $('#btn-export-excel').click(function(){window.open('/predict/api/report/excel');layer.msg('Excel 报告下载中...',{icon:1});});
+                                $('#btn-export-pdf').click(function(){var x2=new XMLHttpRequest();x2.open('POST','/predict/api/report/export/pdf',true);x2.setRequestHeader('Content-Type','application/json');x2.responseType='blob';x2.onload=function(){if(x2.status===200){var a=document.createElement('a');a.href=URL.createObjectURL(x2.response);a.download='员工离职分析报告.pdf';document.body.appendChild(a);a.click();a.remove();}};x2.send(JSON.stringify(currentFilters));});
+                                $('#btn-send-mail').click(function(){layer.prompt({title:'发送报告到邮箱',placeholder:'请输入收件人邮箱'},function(val,i2){layer.close(i2);$.ajax({url:'/predict/api/report/send_mail',type:'POST',contentType:'application/json',data:JSON.stringify({recipient:val}),success:function(r){layer.msg(r.msg,{icon:r.code===200?1:2});},error:function(){layer.msg('发送失败',{icon:2});}});});});
+                                $('#btn-cancel-preview').click(function(){layer.close(idx);});
+                            },
+                            end:function(){setTimeout(function(){URL.revokeObjectURL(blobUrl);},3000);}
+                        });
+                    } else { layer.msg('报告加载失败',{icon:2}); }
+                };
+                xhr.onerror=function(){layer.close(loadIdx);layer.msg('加载失败',{icon:2});};
+                xhr.send();
+            } else { layer.close(loadIdx); layer.msg('生成失败：'+res.message,{icon:2}); }
+        }).fail(function(xhr){ layer.close(loadIdx); var m=xhr.responseJSON?xhr.responseJSON.message:'通信失败'; layer.alert(m,{icon:2,title:'错误'}); });
+    });
+
+    window.initChart = initChart;
+    if (document.readyState==='complete') initChart(); else window.addEventListener('load', initChart);
+});
+</script>
+</body>
+</html>

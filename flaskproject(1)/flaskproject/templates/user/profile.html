@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>个人中心</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <!-- Cropper CSS 国内稳定源 -->
+    <link rel="stylesheet" href="/static/cropper.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 18px 0;
+            margin: 0;
+        }
+        .page-container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+            padding: 22px 32px;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #303133;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ebeef5;
+        }
+
+        /* 头像区域紧凑化 */
+        .avatar-box {
+            text-align: center;
+            padding: 4px 0;
+        }
+        #avatarImg {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 16px rgba(0, 150, 136, 0.15);
+            transition: all 0.3s ease;
+        }
+        #avatarImg:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 150, 136, 0.22);
+        }
+        .upload-btn-wrap {
+            margin-top: 14px;
+        }
+        .layui-btn-primary {
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            height: 34px;
+            line-height: 32px;
+        }
+        .layui-btn-primary:hover {
+            border-color: #009688;
+            color: #009688;
+        }
+        #previewImg {
+            max-width: 180px;
+            margin-top: 12px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        /* 裁剪弹窗样式 */
+        .cropper-modal-box {
+            display: none;
+            padding: 20px;
+        }
+        #cropperImage {
+            max-width: 100%;
+            max-height: 380px;
+            display: block;
+            margin: 0 auto;
+        }
+        .cropper-btn-group {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* 表单紧凑优化 */
+        .layui-form-item {
+            margin-bottom: 14px;
+        }
+        .layui-form-label {
+            width: 80px;
+            padding: 8px 15px;
+            color: #606266;
+            font-weight: 400;
+            font-size: 14px;
+        }
+        .layui-input-block {
+            margin-left: 110px;
+        }
+        .layui-input {
+            height: 36px;
+            line-height: 36px;
+            border-radius: 6px;
+            border-color: #dcdfe6;
+            transition: border-color 0.2s ease;
+            font-size: 14px;
+        }
+        .layui-input:focus {
+            border-color: #009688;
+        }
+        .layui-input[disabled] {
+            background-color: #f5f7fa;
+            color: #909399;
+            cursor: not-allowed;
+        }
+
+        /* 提交按钮 */
+        .submit-btn {
+            height: 38px;
+            padding: 0 26px;
+            border-radius: 6px;
+            background-color: #009688;
+            border-color: #009688;
+            transition: all 0.2s ease;
+            line-height: 36px;
+        }
+        .submit-btn:hover {
+            background-color: #00857a;
+            border-color: #00857a;
+        }
+        .layui-form-item:last-child {
+            margin-bottom: 0;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- 头像区域卡片 -->
+        <div class="card">
+            <div class="card-title">我的头像</div>
+            <div class="avatar-box">
+                <img id="avatarImg" src="" alt="头像">
+                <div class="upload-btn-wrap">
+                    <button type="button" class="layui-btn layui-btn-primary" id="uploadAvatarBtn">更换头像</button>
+                </div>
+                <img id="previewImg" alt="预览">
+            </div>
+        </div>
+
+        <!-- 个人信息卡片 -->
+        <div class="card">
+            <div class="card-title">个人信息</div>
+            <form class="layui-form" lay-filter="profileForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">用户名</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="profile-username" class="layui-input" disabled>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">真实姓名</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="real_name" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">邮箱</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="email" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">手机号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="phone" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">部门</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="profile-dept" class="layui-input" disabled>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">角色</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="profile-role" class="layui-input" disabled>
+                    </div>
+                </div>
+                <div class="layui-form-item" style="text-align:center;">
+                    <button class="layui-btn submit-btn" lay-submit lay-filter="editProfile">保存修改</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 我的操作记录入口 -->
+        <div class="card" style="text-align:center;padding:18px 32px;">
+            <a href="/log/my" target="mainFrame" style="color:#409eff;font-size:15px;text-decoration:none;">
+                <i class="layui-icon layui-icon-log" style="margin-right:6px;"></i>我的操作记录
+            </a>
+        </div>
+
+        <!-- 修改密码卡片 -->
+        <div class="card">
+            <div class="card-title">修改密码</div>
+            <form class="layui-form">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">原密码</label>
+                    <div class="layui-input-block">
+                        <input type="password" id="old-pwd" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">新密码</label>
+                    <div class="layui-input-block">
+                        <input type="password" id="new-pwd" class="layui-input" placeholder="不少于6位">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">确认密码</label>
+                    <div class="layui-input-block">
+                        <input type="password" id="confirm-pwd" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item" style="text-align:center;">
+                    <button type="button" class="layui-btn submit-btn" id="change-pwd-btn">确认修改密码</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 头像裁剪弹窗 -->
+    <div id="cropperModal" class="cropper-modal-box">
+        <img id="cropperImage" src="" alt="裁剪预览">
+        <div class="cropper-btn-group">
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelCropBtn">取消</button>
+            <button type="button" class="layui-btn" id="confirmCropBtn" style="background-color:#009688;border-color:#009688;">确认裁剪并上传</button>
+        </div>
+    </div>
+
+    <script src="/static/layui.js"></script>
+    <!-- Cropper JS 国内稳定源 -->
+    <script src="/static/cropper.min.js"></script>
+    <script>
+        layui.use(['form','layer','jquery','upload'], function(){
+            var form = layui.form;
+            var layer = layui.layer;
+            var $ = layui.$;
+            var upload = layui.upload;
+            var userId;
+            var cropper = null;
+            var currentFile = null;
+
+            // 容错：如果 Cropper 没加载成功，页面也能正常使用
+            if (typeof Cropper === 'undefined') {
+                layer.msg('裁剪组件加载失败，将使用普通上传', {icon: 0, time: 2000});
+            }
+
+            // 工具函数：统一补全头像路径
+            function fixAvatarUrl(url){
+                if(!url || url.trim() === "") return '';
+                if(url.startsWith('/')) return url;
+                return '/' + url;
+            }
+
+            // 加载个人信息+回填头像
+            $.get('/user/api/profile', function(res){
+                if(res.code === 0){
+                    var d = res.data;
+                    userId = d.id;
+                    $('#profile-username').val(d.username);
+                    $('input[name="real_name"]').val(d.real_name);
+                    $('input[name="email"]').val(d.email);
+                    $('input[name="phone"]').val(d.phone);
+                    $('#profile-dept').val(d.department);
+                    $('#profile-role').val(d.role === 'admin' ? '管理员' : '普通用户');
+
+                    var avatarUrl = fixAvatarUrl(d.avatar);
+                    if(avatarUrl){
+                        $('#avatarImg').attr('src', avatarUrl);
+                    }else{
+                        // 默认人物剪影头像
+                        $('#avatarImg').attr('src', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><circle cx="90" cy="90" r="90" fill="#f0f2f5"/><path d="M90 58 a24 24 0 0 1 24 24 a24 24 0 0 1 -24 24 a24 24 0 0 1 -24 -24 a24 24 0 0 1 24 -24 z" fill="#909399"/><path d="M42 138 a48 48 0 0 1 96 0 z" fill="#909399"/></svg>');
+                    }
+                    form.render();
+                }
+            });
+
+            // 头像上传+裁剪逻辑
+            upload.render({
+                elem: '#uploadAvatarBtn',
+                accept: 'images',
+                acceptMime: 'image/png,image/jpg,image/jpeg,image/gif,image/webp',
+                size: 5120,
+                auto: false,
+                choose: function(obj){
+                    obj.preview(function(index, file, result){
+                        currentFile = file;
+                        if (typeof Cropper === 'undefined') {
+                            uploadAvatarDirect(result, file);
+                            return;
+                        }
+                        layer.open({
+                            type: 1,
+                            title: '调整头像选区',
+                            area: ['520px', '540px'],
+                            content: $('#cropperModal'),
+                            success: function(){
+                                var $img = $('#cropperImage');
+                                $img.attr('src', result);
+                                if(cropper){
+                                    cropper.destroy();
+                                    cropper = null;
+                                }
+                                cropper = new Cropper($img[0], {
+                                    aspectRatio: 1,
+                                    viewMode: 1,
+                                    dragMode: 'move',
+                                    autoCropArea: 0.8,
+                                    cropBoxResizable: true,
+                                    cropBoxMovable: true,
+                                    background: false,
+                                    guides: true
+                                });
+                            },
+                            cancel: function(){
+                                if(cropper){
+                                    cropper.destroy();
+                                    cropper = null;
+                                }
+                            }
+                        });
+                    });
+                }
+            });
+
+            // 确认裁剪并上传
+            $('#confirmCropBtn').click(function(){
+                if(!cropper) return;
+                cropper.getCroppedCanvas({
+                    width: 200,
+                    height: 200,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
+                }).toBlob(function(blob){
+                    var formData = new FormData();
+                    formData.append('avatar_file', blob, currentFile.name);
+                    $.ajax({
+                        url: '/user/api/upload_avatar',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(res){
+                            if(res.code === 0){
+                                layer.msg("头像上传成功", {icon:1});
+                                $('#avatarImg').attr('src', fixAvatarUrl(res.avatar_url));
+                                layer.closeAll();
+                                if(cropper){
+                                    cropper.destroy();
+                                    cropper = null;
+                                }
+                            }else{
+                                layer.msg(res.msg, {icon:2});
+                            }
+                        },
+                        error: function(){
+                            layer.msg("上传失败，请重试", {icon:2});
+                        }
+                    });
+                }, currentFile.type, 0.9);
+            });
+
+            // 取消裁剪
+            $('#cancelCropBtn').click(function(){
+                layer.closeAll();
+                if(cropper){
+                    cropper.destroy();
+                    cropper = null;
+                }
+            });
+
+            // 普通直接上传兜底
+            function uploadAvatarDirect(result, file){
+                var formData = new FormData();
+                formData.append('avatar_file', file);
+                $.ajax({
+                    url: '/user/api/upload_avatar',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res){
+                        if(res.code === 0){
+                            layer.msg("头像上传成功", {icon:1});
+                            $('#avatarImg').attr('src', fixAvatarUrl(res.avatar_url));
+                        }else{
+                            layer.msg(res.msg, {icon:2});
+                        }
+                    },
+                    error: function(){
+                        layer.msg("上传失败，请重试", {icon:2});
+                    }
+                });
+            }
+
+            // 保存个人信息
+            form.on('submit(editProfile)', function(data){
+                data.field.user_id = userId;
+                $.post('/user/api/edit', data.field, function(res){
+                    if(res.code === 0){
+                        layer.msg('信息更新成功', {icon:1});
+                    }else{
+                        layer.msg(res.msg, {icon:2});
+                    }
+                })
+                return false;
+            });
+
+            // 修改密码
+            $('#change-pwd-btn').click(function(){
+                var oldPwd = $('#old-pwd').val();
+                var newPwd = $('#new-pwd').val();
+                var confirmPwd = $('#confirm-pwd').val();
+                if(!oldPwd || !newPwd || !confirmPwd){
+                    layer.msg('请填写完整密码信息', {icon:0});
+                    return;
+                }
+                if(newPwd !== confirmPwd){
+                    layer.msg('两次新密码不一致', {icon:0});
+                    return;
+                }
+                $.post('/user/api/change-password', {
+                    old_password: oldPwd,
+                    new_password: newPwd,
+                    confirm_password: confirmPwd
+                }, function(res){
+                    if(res.code === 0){
+                        layer.msg(res.msg, {icon:1}, function(){
+                            window.parent.location.href = '/logout';
+                        });
+                    }else{
+                        layer.msg(res.msg, {icon:2});
+                    }
+                })
+            })
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>员工列表</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+
+        /* 页面头部 */
+        .page-header { margin-bottom: 18px; }
+        .page-header h2 { font-size: 22px; font-weight: 700; color: #1a2332; }
+        .page-header .sub { font-size: 13px; color: #8c939d; margin-top: 2px; }
+
+        /* 卡片容器 */
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            padding: 20px 24px;
+            margin-bottom: 18px;
+        }
+        .table-card { padding: 0; overflow: hidden; }
+
+        /* 搜索栏 */
+        .search-card .layui-form-item { margin-bottom: 0; }
+        .search-card .layui-inline { margin-right: 10px; margin-bottom: 0; }
+        .search-card .layui-form-label {
+            background: #f5f7fa;
+            border-radius: 6px 0 0 6px;
+            border: 1px solid #e4e7ed;
+            border-right: none;
+            line-height: 36px;
+            height: 38px;
+            padding: 0 12px;
+            font-weight: 500;
+            color: #606266;
+            width: auto;
+        }
+        .search-card .layui-input-inline { width: 150px; }
+        .search-card .layui-input, .search-card .layui-select { height: 38px; border-radius: 0 6px 6px 0; }
+
+        /* 按钮 */
+        .btn-primary {
+            background: linear-gradient(135deg, #009688, #00796b) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            padding: 0 16px !important;
+            font-weight: 500 !important;
+            box-shadow: 0 2px 10px rgba(0,150,136,0.3);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,150,136,0.4); }
+        /* 表格 */
+        .layui-table { margin: 0; }
+        .layui-table thead tr { background: #f8fafc; }
+        .layui-table th { font-weight: 600 !important; color: #303133 !important; border-color: #ebeef5 !important; padding: 12px 0 !important; }
+        .layui-table td { padding: 10px 0 !important; border-color: #ebeef5 !important; color: #606266; }
+        .layui-table tbody tr:hover { background: #f5f7fa !important; }
+        .batch-checkbox { display: none !important; }
+        .batch-show .batch-checkbox { display: table-cell !important; }
+
+        /* 状态标签 */
+        .tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .tag-yes { background: #ffebee; color: #c62828; }
+        .tag-no { background: #e8f5e9; color: #2e7d32; }
+        .tag-yellow { background: #fff8e1; color: #e65100; }
+
+        /* 弹窗表单 */
+        .modal-form { padding: 10px 0; }
+        .modal-form .layui-form-label { width: 90px; padding: 9px 8px 9px 0; font-weight: 500; color: #303133; text-align: right; }
+        .modal-form .layui-input-block { margin-left: 100px; }
+        .modal-form fieldset { margin: 16px 0 6px 0; }
+        .modal-form fieldset legend { font-size: 14px; font-weight: 600; color: #009688; padding: 0 10px; }
+
+        /* 详情 */
+        .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 16px; padding: 12px; }
+        .detail-grid .item { padding: 6px 0; }
+        .detail-grid .item .label { font-size: 11px; color: #8c939d; margin-bottom: 1px; }
+        .detail-grid .item .value { font-size: 14px; color: #303133; font-weight: 500; }
+
+        @media (max-width: 768px) {
+            .detail-grid { grid-template-columns: repeat(2, 1fr); }
+            .search-card .layui-input-inline { width: 120px; }
+            .modal-form .layui-col-md6 { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h2>📋 员工列表</h2>
+    <p class="sub">管理员工基本信息、工作详情及离职数据</p>
+</div>
+
+<!-- 搜索栏 -->
+<div class="card search-card">
+    <form class="layui-form" lay-filter="searchForm">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">部门</label>
+                <div class="layui-input-inline">
+                    <select name="department">
+                        <option value="">全部</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Research & Development">R&D</option>
+                        <option value="Human Resources">HR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">性别</label>
+                <div class="layui-input-inline">
+                    <select name="gender">
+                        <option value="">全部</option>
+                        <option value="Male">男</option>
+                        <option value="Female">女</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">关键词</label>
+                <div class="layui-input-inline">
+                    <input type="text" name="keyword" placeholder="工号/岗位" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <button class="layui-btn btn-primary" lay-submit lay-filter="searchBtn">🔍 搜索</button>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn btn-primary" id="add-btn">＋ 添加员工</button>
+            </div>
+            <div class="layui-inline" style="border-left:1px solid #e4e7ed;padding-left:10px;margin-left:4px;">
+                <button type="button" class="layui-btn" id="batch-del-btn" style="background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:6px;height:38px;line-height:38px;font-weight:500;">🗑 批量删除</button>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn btn-primary" id="export-csv-btn">📥 导出CSV</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 行工具栏 -->
+<script type="text/html" id="toolbar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">详情</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="delete">删除</a>
+</script>
+
+<!-- 表格 -->
+<div class="card table-card">
+    <table id="EmpList" lay-filter="test"></table>
+</div>
+
+<!-- 添加/编辑弹窗 -->
+<div id="addEmpModal" style="display:none;">
+    <form class="layui-form modal-form" id="addEmpForm" lay-filter="emp-form" style="padding:10px 20px;">
+        <fieldset class="layui-elem-field layui-field-title">
+            <legend>📌 基本信息</legend>
+        </fieldset>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">工号</label>
+                    <div class="layui-input-block">
+                        <input id="form-EmployeeNumber" type="number" name="EmployeeNumber" lay-verify="required|number" class="layui-input" placeholder="请输入工号">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">年龄</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="Age" lay-verify="required" placeholder="年龄" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">性别</label>
+                    <div class="layui-input-block">
+                        <select name="Gender" lay-verify="required">
+                            <option value="">请选择</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">婚姻</label>
+                    <div class="layui-input-block">
+                        <select name="MaritalStatus">
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Divorced">Divorced</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">部门</label>
+                    <div class="layui-input-block">
+                        <select name="Department" lay-verify="required">
+                            <option value="">请选择</option>
+                            <option value="Sales">Sales</option>
+                            <option value="Research & Development">R&D</option>
+                            <option value="Human Resources">HR</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">专业领域</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="EducationField" placeholder="如: Life Science" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">通勤距离</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="DistanceFromHome" placeholder="公里数" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <fieldset class="layui-elem-field layui-field-title">
+            <legend>💼 工作详情</legend>
+        </fieldset>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">工作角色</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="JobRole" lay-verify="required" placeholder="岗位名称" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">级别</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="JobLevel" placeholder="1-5" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">月收入</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="MonthlyIncome" lay-verify="required" placeholder="月薪" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">总工龄</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="TotalWorkingYears" placeholder="总工作年限" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <fieldset class="layui-elem-field layui-field-title">
+            <legend>⚠️ 离职风险</legend>
+        </fieldset>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">是否离职</label>
+                    <div class="layui-input-block">
+                        <select name="Attrition">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">是否加班</label>
+                    <div class="layui-input-block">
+                        <select name="OverTime">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">满意度(1-4)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="JobSatisfaction" placeholder="1~4" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="margin-top:20px;text-align:center;">
+            <button type="button" class="layui-btn layui-btn-primary" id="cancel-btn" style="border-radius:8px;margin-right:12px;">取消</button>
+            <button id="submit-btn" class="layui-btn btn-primary" lay-submit lay-filter="emp-add-submit" style="padding:0 28px;">确认添加</button>
+        </div>
+    </form>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+    layui.use(['table','form','layer','jquery'], function(){
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var $ = layui.$;
+        var addLayerIndex;
+        let isBatchMode = false;
+
+        table.render({
+            elem: '#EmpList',
+            url: '/employee/api/employees',
+            page: { layout: ['prev', 'page', 'next', 'skip', 'limit', 'count'] },
+            cols: [[
+                {type: 'checkbox', fixed: 'left', className:"batch-checkbox"},
+                {field: 'EmployeeNumber', title: '工号', sort: true, fixed: 'left', width: 85},
+                {field: 'Age', title: '年龄', width: 55},
+                {field: 'Gender', title: '性别', width: 55},
+                {field: 'MaritalStatus', title: '婚姻', width: 65, sort: true},
+                {field: 'Department', title: '部门'},
+                {field: 'EducationField', title: '专业领域', sort: true},
+                {field: 'DistanceFromHome', title: '通勤(km)', width: 80, sort: true},
+                {field: 'JobRole', title: '岗位'},
+                {field: 'MonthlyIncome', title: '月薪', width: 80, sort: true},
+                {field: 'Attrition', title: '离职', width: 72, templet: function(d){
+                    return d.Attrition === 'Yes'
+                        ? '<span class="tag tag-yes">已离职</span>'
+                        : '<span class="tag tag-no">在职</span>';
+                }},
+                {title: '操作', toolbar: '#toolbar', width: 195}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function(data){
+            table.reload('EmpList', { where: data.field, page: {curr: 1} });
+            $('body').removeClass('batch-show');
+            isBatchMode = false;
+            return false;
+        });
+
+        $('#add-btn').on('click', function(){
+            $('#form-EmployeeNumber').prop('disabled', false).removeClass('layui-disabled');
+            addLayerIndex = layer.open({
+                type: 1, title: '➕ 添加新员工', area: ['780px', '620px'],
+                content: $('#addEmpModal'),
+                success: function(){
+                    $('#addEmpForm')[0].reset();
+                    $('#submit-btn').attr('lay-filter', 'emp-add-submit').text('确认添加');
+                    form.render();
+                }
+            });
+        });
+
+        $('#cancel-btn').on('click', function(){ layer.close(addLayerIndex); });
+
+        table.on('tool(test)', function(obj){
+            var data = obj.data;
+            if(obj.event === 'edit'){
+                $('#form-EmployeeNumber').prop('disabled', true).addClass('layui-disabled');
+                addLayerIndex = layer.open({
+                    type: 1, title: '✏️ 编辑员工（工号：'+ data.EmployeeNumber +'）',
+                    area: ['780px', '620px'], content: $('#addEmpModal'),
+                    success: function(){
+                        $('input[name="EmployeeNumber"]').val(data.EmployeeNumber);
+                        $('input[name="Age"]').val(data.Age);
+                        $('select[name="Gender"]').val(data.Gender);
+                        $('select[name="MaritalStatus"]').val(data.MaritalStatus);
+                        $('select[name="Department"]').val(data.Department);
+                        $('input[name="EducationField"]').val(data.EducationField);
+                        $('input[name="DistanceFromHome"]').val(data.DistanceFromHome);
+                        $('input[name="JobRole"]').val(data.JobRole);
+                        $('input[name="JobLevel"]').val(data.JobLevel);
+                        $('input[name="MonthlyIncome"]').val(data.MonthlyIncome);
+                        $('input[name="TotalWorkingYears"]').val(data.TotalWorkingYears);
+                        $('select[name="OverTime"]').val(data.OverTime);
+                        $('select[name="Attrition"]').val(data.Attrition);
+                        $('input[name="JobSatisfaction"]').val(data.JobSatisfaction);
+                        $('#submit-btn').attr('lay-filter', 'emp-edit-submit').text('确认修改');
+                        form.render();
+                    }
+                });
+            } else if(obj.event === 'delete'){
+                layer.confirm('<p style="font-size:15px;">确定删除工号【'+ data.EmployeeNumber +'】？</p><p style="color:#999;font-size:13px;">删除后无法恢复</p>', {icon:3, title:'⚠️ 删除确认', btn:['确认删除','取消']}, function(index){
+                    $.ajax({
+                        url: '/employee/api/delete', method: 'POST',
+                        data: {EmployeeNumber: data.EmployeeNumber},
+                        success: function(res){
+                            if(res.code === 0){
+                                layer.msg('✅ 删除成功', {icon:1}); layer.close(index);
+                                table.reload('EmpList');
+                                $('body').removeClass('batch-show'); isBatchMode = false;
+                            } else { layer.msg(res.msg || '删除失败', {icon:2}); }
+                        },
+                        error: function(){ layer.msg('网络异常', {icon:2}); }
+                    })
+                })
+            } else if(obj.event === 'detail'){
+                layer.open({
+                    type:1, title:'📋 员工详情', area:['650px','440px'],
+                    content: `<div class="detail-grid">
+                        <div class="item"><div class="label">工号</div><div class="value">${data.EmployeeNumber}</div></div>
+                        <div class="item"><div class="label">年龄</div><div class="value">${data.Age}</div></div>
+                        <div class="item"><div class="label">性别</div><div class="value">${data.Gender}</div></div>
+                        <div class="item"><div class="label">婚姻</div><div class="value">${data.MaritalStatus}</div></div>
+                        <div class="item"><div class="label">部门</div><div class="value">${data.Department}</div></div>
+                        <div class="item"><div class="label">专业</div><div class="value">${data.EducationField}</div></div>
+                        <div class="item"><div class="label">通勤距离</div><div class="value">${data.DistanceFromHome} km</div></div>
+                        <div class="item"><div class="label">岗位</div><div class="value">${data.JobRole}</div></div>
+                        <div class="item"><div class="label">级别</div><div class="value">${data.JobLevel}</div></div>
+                        <div class="item"><div class="label">月薪</div><div class="value">${data.MonthlyIncome}</div></div>
+                        <div class="item"><div class="label">总工龄</div><div class="value">${data.TotalWorkingYears} 年</div></div>
+                        <div class="item"><div class="label">加班</div><div class="value">${data.OverTime === 'Yes' ? '<span class="tag tag-yellow">是</span>' : '<span class="tag tag-no">否</span>'}</div></div>
+                        <div class="item"><div class="label">离职</div><div class="value">${data.Attrition === 'Yes' ? '<span class="tag tag-yes">已离职</span>' : '<span class="tag tag-no">在职</span>'}</div></div>
+                        <div class="item"><div class="label">满意度</div><div class="value">${data.JobSatisfaction} / 4</div></div>
+                    </div>`
+                })
+            }
+        });
+
+        $('#batch-del-btn').click(function(){
+            if(!isBatchMode){
+                $('body').addClass('batch-show'); isBatchMode = true;
+                layer.msg('已开启批量选择，勾选后再次点击本按钮执行删除', {icon:0});
+            } else {
+                var checkData = table.checkStatus('EmpList').data;
+                if(checkData.length === 0){
+                    $('body').removeClass('batch-show'); isBatchMode = false;
+                    layer.msg('未勾选，已关闭批量选择', {icon:0}); return;
+                }
+                var empIdList = checkData.map(item=>item.EmployeeNumber);
+                layer.confirm(`<p style="font-size:15px;">确定批量删除 ${empIdList.length} 条数据？</p><p style="color:#999;font-size:13px;">删除后无法恢复！</p>`, {icon:3, title:"⚠️ 批量删除", btn:['确认删除','取消']}, function(index){
+                    $.ajax({
+                        url:"/employee/api/batch_delete", method:"POST",
+                        data:{emp_ids: JSON.stringify(empIdList)},
+                        success:function(res){
+                            if(res.code === 0){
+                                layer.msg(`✅ 成功删除 ${res.count} 条数据`, {icon:1});
+                                layer.close(index); table.reload('EmpList');
+                                $('body').removeClass('batch-show'); isBatchMode = false;
+                            } else { layer.msg(res.msg, {icon:2}); }
+                        },
+                        error:function(){ layer.msg('网络异常', {icon:2}); }
+                    })
+                })
+            }
+        })
+
+        $('#export-csv-btn').click(function(){
+            var searchData = form.val('searchForm');
+            var params = new URLSearchParams(searchData).toString();
+            window.open('/employee/api/export_csv?' + params);
+        })
+
+        form.on('submit(emp-add-submit)', function(data){
+            $.ajax({
+                url: '/employee/api/add', method: 'POST', data: data.field,
+                success: function(res){
+                    if(res.code === 0){
+                        layer.msg('✅ 添加成功', {icon:1}); layer.close(addLayerIndex);
+                        table.reload('EmpList');
+                        $('body').removeClass('batch-show'); isBatchMode = false;
+                    } else { layer.msg(res.msg, {icon:2}); }
+                },
+                error: function(){ layer.msg('网络异常', {icon:2}); }
+            }); return false;
+        });
+
+        form.on('submit(emp-edit-submit)', function(data){
+            var formData = data.field;
+            formData.EmployeeNumber = $('#form-EmployeeNumber').val();
+            $.ajax({
+                url: '/employee/api/edit', method: 'POST', data: formData,
+                success: function(res){
+                    if(res.code === 0){
+                        layer.msg('✅ 修改成功', {icon:1}); layer.close(addLayerIndex);
+                        table.reload('EmpList');
+                        $('body').removeClass('batch-show'); isBatchMode = false;
+                    } else { layer.msg(res.msg, {icon:2}); }
+                },
+                error: function(){ layer.msg('网络异常', {icon:2}); }
+            }); return false;
+        });
+    });
+</script>
+</body>
+</html>

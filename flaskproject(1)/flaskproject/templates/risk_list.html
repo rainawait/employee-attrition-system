@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>风险排名</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* ===== 基础样式 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; }
+        .container { max-width: 1440px; margin: 0 auto; }
+
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .page-header h2 { font-size: 22px; font-weight: 600; color: #1a2332; letter-spacing: 0.5px; }
+        .page-header .sub { font-size: 14px; color: #8c939d; font-weight: 400; margin-left: 10px; }
+
+        .filter-bar {
+            background: #fff; padding: 12px 20px; border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 20px;
+        }
+        .filter-bar .layui-input-inline { width: 150px; }
+        .filter-bar .layui-input-inline select { height: 36px; border-radius: 6px; border-color: #dcdfe6; }
+        .filter-bar .layui-btn { height: 36px; line-height: 36px; border-radius: 6px; padding: 0 18px; }
+        .filter-bar .layui-btn-primary { border-color: #dcdfe6; }
+        .filter-bar .btn-export { margin-left: auto; background: #409eff; color: #fff; }
+        .filter-bar .btn-export:hover { background: #337ecc; }
+
+        .table-wrapper {
+            background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            overflow: hidden; padding: 0 4px 4px 4px;
+        }
+        .risk-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .risk-table thead th {
+            background: #f7f9fc; color: #4a5568; font-weight: 600;
+            padding: 14px 12px; border-bottom: 2px solid #e9edf4;
+            text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 2;
+        }
+        .risk-table tbody td {
+            padding: 14px 12px; border-bottom: 1px solid #f0f2f7;
+            vertical-align: middle; color: #2c3e50;
+        }
+        .risk-table tbody tr:hover { background: #f8faff; }
+        .risk-table tbody tr:last-child td { border-bottom: none; }
+
+        .emp-id { font-weight: 600; color: #1a2332; }
+        .badge-overtime {
+            display: inline-block; padding: 2px 10px; border-radius: 12px;
+            font-size: 12px; font-weight: 500;
+        }
+        .badge-overtime.yes { background: #ffebee; color: #c62828; }
+        .badge-overtime.no { background: #e8f5e9; color: #2e7d32; }
+
+        .risk-cell { display: flex; align-items: center; gap: 10px; }
+        .risk-tag {
+            padding: 4px 14px; border-radius: 20px; color: #fff;
+            font-weight: 600; font-size: 13px; white-space: nowrap; letter-spacing: 0.3px;
+        }
+        .risk-high { background: linear-gradient(135deg, #f44336, #d32f2f); }
+        .risk-mid { background: linear-gradient(135deg, #ffb300, #f9a825); }
+        .risk-low { background: linear-gradient(135deg, #66bb6a, #43a047); }
+
+        .risk-score { font-weight: 700; font-size: 18px; color: #1a2332; min-width: 50px; text-align: right; }
+
+        .advice-text { font-size: 13px; padding: 2px 8px; border-radius: 4px; display: inline-block; }
+        .advice-high { background: #ffebee; color: #b71c1c; }
+        .advice-mid { background: #fff8e1; color: #f57f17; }
+        .advice-low { background: #e8f5e9; color: #1b5e20; }
+
+        .btn-ai {
+            background: #5c6bc0; border: none; border-radius: 6px; color: #fff;
+            padding: 4px 14px; font-size: 12px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-ai:hover { background: #3f51b5; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(92,107,192,0.4); }
+        .btn-intervene {
+            background: #ff9800; border: none; border-radius: 6px; color: #fff;
+            padding: 4px 14px; font-size: 12px; cursor: pointer; transition: 0.2s;
+            margin-left: 4px;
+        }
+        .btn-intervene:hover { background: #f57c00; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(255,152,0,0.4); }
+
+        /* ===== 干预弹窗表单样式 ===== */
+        .intervene-form .layui-form-label { width: 90px; }
+        .intervene-form .layui-input-block { margin-left: 120px; }
+        .intervene-form .layui-input, .intervene-form .layui-textarea {
+            border-radius: 6px;
+        }
+        .intervene-form .readonly-input {
+            background: #f5f5f5 !important; color: #999 !important; cursor: not-allowed;
+        }
+
+        .pagination-area {
+            padding: 16px 20px; background: #fff; border-radius: 0 0 12px 12px;
+            text-align: center; border-top: 1px solid #f0f2f7;
+        }
+
+        /* ===== AI 报告样式（屏幕与PDF通用） ===== */
+        #reportContainer {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            padding: 12px 16px 16px 16px;
+            max-height: 75vh;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #1a2332;
+        }
+        #reportContainer * { font-family: inherit; }
+
+        .report-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eef2f6;
+            padding-bottom: 6px;
+        }
+        .report-topbar .info { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; color: #64748b; }
+        .report-topbar .info strong { color: #1a2332; }
+        #exportPdfBtn {
+            background: #3b82f6; color: white; border: none; border-radius: 6px;
+            padding: 5px 16px; font-size: 13px; cursor: pointer;
+        }
+        #exportPdfBtn:hover { background: #2563eb; }
+
+        .emp-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px 16px;
+            background: #f8fafc;
+            padding: 10px 18px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #eef2f6;
+            font-size: 14px;
+        }
+        .emp-detail-grid .item { color: #475569; line-height: 1.6; }
+        .emp-detail-grid .item strong { color: #1a2332; font-weight: 600; margin-right: 4px; }
+
+        .report-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a2332;
+            margin-top: 6px;
+            margin-bottom: 2px;
+            padding-bottom: 2px;
+            border-bottom: 1px solid #eef2f6;
+        }
+        .report-title-first { margin-top: 0; }
+
+        .report-body {
+            background: #f8fafc;
+            padding: 10px 16px 14px 16px;
+            border-radius: 6px;
+            line-height: 1.8;
+            font-size: 14px;
+            color: #1a2332;
+            text-align: left;
+        }
+        .report-body p { margin: 4px 0; }
+        .report-body ul, .report-body ol { padding-left: 20px; margin: 4px 0; }
+        .report-body li { margin: 2px 0; list-style: disc; }
+        .report-body strong { font-weight: 600; color: #1a2332; }
+
+        /* ===== 打印/PDF 专用样式 ===== */
+        @media print {
+            body { background: white; padding: 0; }
+            #reportContainer {
+                max-height: none !important;
+                overflow: visible !important;
+                padding: 8px 12px 12px 12px;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            .report-topbar { margin-bottom: 6px; padding-bottom: 4px; }
+            .emp-detail-grid { padding: 6px 12px; gap: 4px 12px; font-size: 13px; }
+            .report-title { font-size: 15px; margin-top: 4px; }
+            .report-body { font-size: 13px; padding: 8px 12px 10px 12px; line-height: 1.6; }
+            #exportPdfBtn { display: none; }
+            .emp-detail-grid, .report-body { background: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
+        @media (max-width: 768px) {
+            .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .filter-bar .layui-input-inline { width: 100%; }
+            .filter-bar .btn-export { margin-left: 0; }
+            .risk-table { font-size: 13px; }
+            .risk-table thead th, .risk-table tbody td { padding: 10px 8px; }
+            .risk-score { font-size: 16px; min-width: 40px; }
+            .emp-detail-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="page-header">
+        <div><h2>📊 在职员工离职风险排名 <span class="sub">实时预警 · 精准干预</span></h2></div>
+        <div>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnRefresh" style="border-radius:6px;">🔄 刷新</button>
+        </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="filter-bar">
+        <div class="layui-input-inline">
+            <select id="filterDept" lay-filter="filterDept">
+                <option value="">全部部门</option>
+                <option value="Sales">Sales</option>
+                <option value="Research & Development">Research & Development</option>
+                <option value="Human Resources">Human Resources</option>
+            </select>
+        </div>
+        <div class="layui-input-inline">
+            <select id="filterRisk" lay-filter="filterRisk">
+                <option value="">全部风险</option>
+                <option value="高风险">高风险</option>
+                <option value="中风险">中风险</option>
+                <option value="低风险">低风险</option>
+            </select>
+        </div>
+        <button class="layui-btn layui-btn-sm" id="btnFilter">筛选</button>
+        <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReset">重置</button>
+        <button class="layui-btn layui-btn-sm btn-export" id="btnExport">📥 导出报表</button>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-wrapper">
+        <table class="risk-table" id="riskTable">
+            <thead>
+                <tr>
+                    <th>工号</th>
+                    <th>所属部门</th>
+                    <th>核心岗位</th>
+                    <th>是否加班</th>
+                    <th>司龄（年）</th>
+                    <th>月收入（￥）</th>
+                    <th>年龄</th>
+                    <th>离职风险状态 / 评分</th>
+                    <th>管理介入方案</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="pagination" class="pagination-area"></div>
+</div>
+
+<!-- ===== 干预措施弹窗表单（隐藏） ===== -->
+<div id="interveneFormBox" style="display:none;padding:20px 20px 10px 20px;">
+    <form class="layui-form intervene-form" lay-filter="interveneForm">
+        <div class="layui-form-item">
+            <label class="layui-form-label">员工编号</label>
+            <div class="layui-input-block">
+                <input type="text" id="invEmpId" class="layui-input readonly-input" readonly>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">所属部门</label>
+            <div class="layui-input-block">
+                <input type="text" id="invEmpDept" class="layui-input readonly-input" readonly>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label"><span style="color:red;">*</span> 干预类型</label>
+            <div class="layui-input-block">
+                <select id="invType" lay-verify="required">
+                    <option value="">请选择</option>
+                    <option value="调薪">调薪</option>
+                    <option value="转岗">转岗</option>
+                    <option value="面谈">面谈</option>
+                    <option value="培训">培训</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label"><span style="color:red;">*</span> 具体描述</label>
+            <div class="layui-input-block">
+                <textarea id="invDesc" placeholder="记录做了什么、原因是什么。例如：与员工一对一沟通，该员工反映加班过多导致工作生活失衡，已承诺调整排班" class="layui-textarea" style="min-height:100px;" lay-verify="required"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">处理结果</label>
+            <div class="layui-input-block">
+                <textarea id="invResult" placeholder="选填，可后续补充处理结果" class="layui-textarea" style="min-height:60px;"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label"><span style="color:red;">*</span> 操作人</label>
+            <div class="layui-input-block">
+                <input type="text" id="invOperator" placeholder="请输入操作人姓名" class="layui-input" lay-verify="required">
+            </div>
+        </div>
+    </form>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['form', 'laypage', 'layer'], function(){
+    var form = layui.form;
+    var laypage = layui.laypage;
+    var layer = layui.layer;
+    var $ = layui.jquery;
+
+    var allData = [];
+    var currentPage = 1;
+    var pageSize = 10;
+
+    function loadData() {
+        $.ajax({
+            url: '/predict/api/batch',
+            type: 'GET',
+            dataType: 'json',
+            success: function(res) {
+                if(res.code === 0) { allData = res.data; renderPage(1); }
+                else { layer.msg(res.msg || '加载失败', {icon:2}); }
+            },
+            error: function() { layer.msg('网络错误，请重试', {icon:2}); }
+        });
+    }
+
+    function renderPage(page) {
+        currentPage = page;
+        var filtered = getFilteredData();
+        var total = filtered.length;
+        var start = (page - 1) * pageSize;
+        var end = Math.min(start + pageSize, total);
+        var pageData = filtered.slice(start, end);
+
+        var html = '';
+        if(pageData.length === 0) {
+            html = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#999;">暂无数据</td></tr>';
+        } else {
+            pageData.forEach(function(item) {
+                var levelClass = item.risk_level === '高风险' ? 'risk-high' : item.risk_level === '中风险' ? 'risk-mid' : 'risk-low';
+                var overClass = item.OverTime === 'Yes' ? 'yes' : 'no';
+                var overText = item.OverTime === 'Yes' ? '加班' : '正常';
+                var adviceClass = item.risk_level === '高风险' ? 'advice-high' : item.risk_level === '中风险' ? 'advice-mid' : 'advice-low';
+                html += `
+                    <tr>
+                        <td><span class="emp-id">${item.EmployeeNumber}</span></td>
+                        <td>${item.Department || '--'}</td>
+                        <td>${item.JobRole || '--'}</td>
+                        <td><span class="badge-overtime ${overClass}">${overText}</span></td>
+                        <td>${item.YearsAtCompany || 0}</td>
+                        <td>${(item.MonthlyIncome || 0).toLocaleString()}</td>
+                        <td>${item.Age || 0}</td>
+                        <td>
+                            <div class="risk-cell">
+                                <span class="risk-tag ${levelClass}">${item.risk_level}</span>
+                                <span class="risk-score">${item.risk_score}%</span>
+                            </div>
+                        </td>
+                        <td><span class="advice-text ${adviceClass}">${item.advice || '--'}</span></td>
+                        <td>
+                            <button class="btn-ai" data-id="${item.EmployeeNumber}">AI分析</button>
+                            <button class="btn-intervene" data-id="${item.EmployeeNumber}" data-dept="${item.Department || ''}">干预</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        $('#tableBody').html(html);
+        laypage.render({
+            elem: 'pagination',
+            count: total,
+            limit: pageSize,
+            curr: page,
+            jump: function(obj, first) { if(!first) renderPage(obj.curr); }
+        });
+    }
+
+    function getFilteredData() {
+        var dept = $('#filterDept').val();
+        var risk = $('#filterRisk').val();
+        return allData.filter(function(item) {
+            return (dept ? item.Department === dept : true) && (risk ? item.risk_level === risk : true);
+        });
+    }
+
+    $('#btnFilter').on('click', function() { renderPage(1); });
+    $('#btnReset').on('click', function() {
+        $('#filterDept').val(''); $('#filterRisk').val('');
+        form.render('select');
+        renderPage(1);
+    });
+    $('#btnRefresh').on('click', function() { loadData(); layer.msg('刷新成功', {icon:1, time:800}); });
+    $('#btnExport').on('click', function() { layer.msg('导出功能开发中...', {icon:1}); });
+
+    // ========== AI特征分析（含克隆导出修复，固定宽度900px） ==========
+    $(document).on('click', '.btn-ai', function() {
+        var id = $(this).data('id');
+        var empData = allData.find(item => item.EmployeeNumber === id);
+        if (!empData) { layer.msg('未找到该员工数据', {icon:2}); return; }
+
+        var detailHtml = `
+            <div class="emp-detail-grid">
+                <div class="item"><strong>工号</strong> ${empData.EmployeeNumber}</div>
+                <div class="item"><strong>部门</strong> ${empData.Department || '--'}</div>
+                <div class="item"><strong>岗位</strong> ${empData.JobRole || '--'}</div>
+                <div class="item"><strong>年龄</strong> ${empData.Age || 0}岁</div>
+                <div class="item"><strong>司龄</strong> ${empData.YearsAtCompany || 0}年</div>
+                <div class="item"><strong>月收入</strong> ¥${(empData.MonthlyIncome || 0).toLocaleString()}</div>
+                <div class="item"><strong>加班</strong> ${empData.OverTime === 'Yes' ? '是' : '否'}</div>
+                <div class="item"><strong>满意度</strong> ${empData.JobSatisfaction || 3}/4</div>
+                <div class="item"><strong>工作生活平衡</strong> ${empData.WorkLifeBalance || 3}/4</div>
+                <div class="item"><strong>风险评分</strong> <span style="color:${empData.risk_level === '高风险' ? '#ef4444' : empData.risk_level === '中风险' ? '#f59e0b' : '#10b981'};font-weight:700;">${empData.risk_score}%</span></div>
+                <div class="item"><strong>风险等级</strong> <span style="background:${empData.risk_level === '高风险' ? '#ef4444' : empData.risk_level === '中风险' ? '#f59e0b' : '#10b981'};color:#fff;padding:0 12px;border-radius:12px;">${empData.risk_level}</span></div>
+                <div class="item"><strong>管理建议</strong> ${empData.advice || '--'}</div>
+            </div>
+        `;
+
+        var index = layer.open({
+            type: 1,
+            title: '🧠 AI 深度风险分析 - 工号 ' + id,
+            area: ['900px', 'auto'],
+            scrollbar: false,
+            shadeClose: true,
+            btn: ['关闭'],
+            content: '<div id="reportContainer" style="padding:12px 16px 16px 16px; max-height:75vh; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", \"Helvetica Neue\", Arial, sans-serif; font-size:14px; line-height:1.8; color:#1a2332;">' +
+                     '  <div style="text-align:center; color:#999; padding:40px;">⏳ AI 正在深度穿透员工数据并生成报告，请稍候...</div>' +
+                     '</div>',
+            success: function(layero, index) {
+                $.ajax({
+                    url: '/predict/ai_analyze',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(empData),
+                    timeout: 30000,
+                    success: function(res) {
+                        if (res.code === 0) {
+                            var analysis = res.data.analysis;
+                            var lines = analysis.split('\n');
+                            var processedLines = lines.map(function(line) {
+                                var match = line.match(/^(\d+)\.\s*(.+)/);
+                                if (match) {
+                                    var num = match[1];
+                                    var title = match[2];
+                                    if (title.length < 35 || title.includes('分析') || title.includes('问题') || title.includes('建议') || title.includes('评估')) {
+                                        return '<div class="report-title ' + (num === '1' ? 'report-title-first' : '') + '">' + num + '. ' + title + '</div>';
+                                    }
+                                }
+                                return line;
+                            });
+                            var htmlContent = processedLines.join('\n')
+                                .replace(/\n/g, '<br>')
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+                            $('#reportContainer').html(`
+                                <div class="report-topbar">
+                                    <div class="info">
+                                        <span>工号 <strong>${id}</strong></span>
+                                        <span>风险评分 <strong style="color:${empData.risk_level === '高风险' ? '#ef4444' : empData.risk_level === '中风险' ? '#f59e0b' : '#10b981'};">${empData.risk_score}%</strong></span>
+                                        <span>等级 <span style="background:${empData.risk_level === '高风险' ? '#ef4444' : empData.risk_level === '中风险' ? '#f59e0b' : '#10b981'};color:#fff;padding:0 12px;border-radius:12px;font-size:12px;">${empData.risk_level}</span></span>
+                                    </div>
+                                    <button id="exportPdfBtn">📄 导出报告</button>
+                                </div>
+                                ${detailHtml}
+                                <div class="report-body">${htmlContent}</div>
+                                <div style="height:10px;"></div>
+                            `);
+
+                            // ★★★ 导出PDF（修复右侧被遮盖） ★★★
+                            $('#exportPdfBtn').off('click').on('click', function() {
+                                var originalContainer = document.getElementById('reportContainer');
+                                var clone = originalContainer.cloneNode(true);
+                                clone.id = 'pdfClone';
+                                // 关键修复：固定宽度，防止右侧被遮盖
+                                clone.style.maxHeight = 'none';
+                                clone.style.overflow = 'visible';
+                                clone.style.height = 'auto';
+                                clone.style.width = '900px';
+                                clone.style.boxSizing = 'border-box';
+                                clone.style.padding = '12px 16px 16px 16px';
+                                document.body.appendChild(clone);
+
+                                // 等待一帧确保克隆渲染完成
+                                requestAnimationFrame(function() {
+                                    html2pdf()
+                                        .set({
+                                            margin: 8,
+                                            filename: 'AI风险分析报告_工号' + id + '.pdf',
+                                            image: { type: 'jpeg', quality: 0.98 },
+                                            html2canvas: {
+                                                scale: 2,
+                                                useCORS: true,
+                                                logging: false,
+                                                scrollY: 0,
+                                                width: 900,
+                                                height: clone.scrollHeight,
+                                                backgroundColor: '#ffffff'
+                                            },
+                                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                                        })
+                                        .from(clone)
+                                        .save()
+                                        .then(function() {
+                                            if (document.body.contains(clone)) document.body.removeChild(clone);
+                                        })
+                                        .catch(function(err) {
+                                            console.error(err);
+                                            if (document.body.contains(clone)) document.body.removeChild(clone);
+                                            layer.msg('导出失败，请重试', {icon:2});
+                                        });
+                                });
+                            });
+
+                        } else {
+                            $('#reportContainer').html('<div style="color:#ef4444;text-align:center;padding:40px;">❌ ' + (res.msg || '分析失败') + '</div>');
+                        }
+                    },
+                    error: function() {
+                        $('#reportContainer').html('<div style="color:#ef4444;text-align:center;padding:40px;">❌ 网络错误，请重试</div>');
+                    }
+                });
+            }
+        });
+    });
+
+    // ========== 干预措施：弹窗 + AJAX 提交 ==========
+    $(document).on('click', '.btn-intervene', function() {
+        var empId = $(this).data('id');
+        var empDept = $(this).data('dept');
+
+        // 预设工号和部门
+        $('#invEmpId').val(empId);
+        $('#invEmpDept').val(empDept);
+        $('#invType').val('');
+        $('#invDesc').val('');
+        $('#invResult').val('');
+        $('#invOperator').val('');
+        form.render('select');
+
+        var layerIndex = layer.open({
+            type: 1,
+            title: '📝 添加干预措施 - 工号 ' + empId,
+            area: ['600px', '520px'],
+            shadeClose: false,
+            btn: ['确定提交', '取消'],
+            content: $('#interveneFormBox'),
+            yes: function(index) {
+                // 表单校验
+                var invType = $('#invType').val();
+                var invDesc = $('#invDesc').val().trim();
+                var invOperator = $('#invOperator').val().trim();
+
+                if (!invType) {
+                    layer.msg('请选择干预类型', {icon: 0});
+                    return;
+                }
+                if (!invDesc) {
+                    layer.msg('请填写具体描述', {icon: 0});
+                    return;
+                }
+                if (!invOperator) {
+                    layer.msg('请填写操作人姓名', {icon: 0});
+                    return;
+                }
+
+                // AJAX 提交
+                $.ajax({
+                    url: '/predict/api/interventions',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        employee_id: parseInt(empId),
+                        type: invType,
+                        description: invDesc,
+                        result: $('#invResult').val().trim(),
+                        operator: invOperator
+                    }),
+                    success: function(res) {
+                        if (res.code === 0) {
+                            layer.close(index);
+                            layer.msg('干预记录已添加', {icon: 1, time: 1500});
+                        } else {
+                            layer.msg(res.msg || '添加失败', {icon: 2});
+                        }
+                    },
+                    error: function() {
+                        layer.msg('网络错误，请重试', {icon: 2});
+                    }
+                });
+            },
+            btn2: function(index) {
+                layer.close(index);
+            }
+        });
+    });
+
+    loadData();
+});
+</script>
+</body>
+</html>

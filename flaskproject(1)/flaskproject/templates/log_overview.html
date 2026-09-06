@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>日志系统架构总览</title>
+<link rel="stylesheet" href="/static/css/layui.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { padding:24px; background:linear-gradient(145deg,#f6f9fc 0%,#e9f0f5 100%); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1a2332; }
+
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.top-bar .brand { font-size:20px; font-weight:700; }
+
+.card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.05); margin-bottom:16px; overflow:hidden; }
+.card-header { font-weight:600; font-size:15px; padding:14px 20px; border-bottom:1px solid #f0f4f8;
+    display:flex; align-items:center; gap:8px; }
+.card-header .dot { width:8px;height:8px;border-radius:50%; }
+.card-body { padding:20px; }
+
+/* 流程图 */
+.flow-row { display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap; margin:16px 0; }
+.flow-box { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-radius:10px;
+    padding:14px 20px; text-align:center; font-size:13px; font-weight:600; min-width:100px; }
+.flow-box.small { padding:10px 16px; font-size:12px; min-width:80px; background:linear-gradient(135deg,#409EFF,#36D1DC); }
+.flow-box.db { background:linear-gradient(135deg,#11998e,#38ef7d); }
+.flow-arrow { font-size:24px; color:#c0c4cc; margin:0 6px; }
+.flow-note { font-size:11px; color:#909399; text-align:center; margin-top:4px; }
+
+/* 埋点表 */
+.point-card { border-left:4px solid #409EFF; background:#f0f7ff; border-radius:0 8px 8px 0;
+    padding:10px 16px; margin-bottom:10px; }
+.point-card.warn { border-left-color:#FF9800; background:#fff8f0; }
+.point-card.danger { border-left-color:#FF5722; background:#fff0f0; }
+.point-card .point-file { font-size:13px; font-weight:600; color:#409EFF; margin-bottom:4px; }
+.point-card .point-items { font-size:12px; color:#606266; line-height:1.8; }
+
+/* 文件卡片 */
+.file-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.file-card { background:#fafbfc; border-radius:10px; border:1px solid #ebeef5; padding:14px;
+    text-align:center; transition:box-shadow 0.2s; }
+.file-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+.file-card .file-name { font-size:15px; font-weight:700; color:#1a2332; font-family:Consolas,monospace; }
+.file-card .file-count { font-size:28px; font-weight:700; color:#409EFF; margin:6px 0; }
+.file-card .file-desc { font-size:11px; color:#8c939d; }
+
+.code-block { background:#1e1e2e; color:#cdd6f4; border-radius:10px; padding:16px 20px;
+    font-family:Consolas,monospace; font-size:12px; line-height:1.7; overflow-x:auto; }
+.code-block .kw { color:#cba6f7; } .code-block .fn { color:#89b4fa; }
+.code-block .str { color:#a6e3a1; } .code-block .cmt { color:#6c7086; }
+
+.step-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.step-card { text-align:center; padding:16px 12px; border-radius:10px; background:#fafbfc; border:1px solid #ebeef5; }
+.step-card .step-num { width:36px;height:36px;border-radius:50%;background:#409EFF;color:#fff;
+    font-size:18px;font-weight:700;line-height:36px;margin:0 auto 8px; }
+.step-card .step-title { font-size:13px;font-weight:600;color:#1a2332; }
+.step-card .step-desc { font-size:11px;color:#909399;margin-top:4px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="brand">📋 操作日志系统架构总览</div>
+    <span style="font-size:12px;color:#8c939d;">log_action() 工具函数 + 12个关键埋点</span>
+</div>
+
+<!-- 3.1 日志工具函数流程 -->
+<div class="card">
+    <div class="card-header"><span class="dot" style="background:#667eea;"></span> 3.1 log_action() 函数工作流程</div>
+    <div class="card-body">
+        <div class="step-grid">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-title">调用入口</div>
+                <div class="step-desc">业务代码一行调用<br>log_action(action,target,detail)</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num" style="background:#FF9800;">2</div>
+                <div class="step-title">自动采集</div>
+                <div class="step-desc">从 session 取 user_id/username<br>从 request 取 remote_addr</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num" style="background:#5FB878;">3</div>
+                <div class="step-title">写入数据库</div>
+                <div class="step-desc">创建 OperationLog 对象<br>db.session.add + commit</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num" style="background:#909399;">4</div>
+                <div class="step-title">容错保护</div>
+                <div class="step-desc">try-except 静默跳过<br>绝不中断主业务流程</div>
+            </div>
+        </div>
+
+        <div style="margin-top:18px;"><strong style="color:#409EFF;">核心代码：</strong></div>
+        <div class="code-block" style="margin-top:8px;">
+<span class="kw">def</span> <span class="fn">log_action</span>(action, target=<span class="str">''</span>, detail=<span class="str">''</span>):<br>
+&nbsp;&nbsp;<span class="cmt"># 1. 非请求环境跳过（命令行/定时任务）</span><br>
+&nbsp;&nbsp;<span class="kw">if not</span> has_request_context(): <span class="kw">return</span><br>
+&nbsp;&nbsp;<span class="kw">try</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;user_id = session.get(<span class="str">'user_id'</span>) &nbsp;&nbsp;<span class="cmt"># 自动获取</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;username = session.get(<span class="str">'username'</span>, <span class="str">''</span>)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ip = request.remote_addr <span class="kw">or</span> <span class="str">''</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;log = OperationLog(user_id=..., username=...,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;action=action, target=..., detail=..., ip=...)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;db.session.add(log); db.session.commit() &nbsp;<span class="cmt"># 写库</span><br>
+&nbsp;&nbsp;<span class="kw">except</span>: <span class="kw">pass</span> &nbsp;<span class="cmt"># 日志失败不影响业务</span>
+        </div>
+    </div>
+</div>
+
+<!-- 3.2 埋点分布 -->
+<div class="card">
+    <div class="card-header"><span class="dot" style="background:#FF9800;"></span> 3.2 关键操作埋点分布（12个埋点 × 4个文件）</div>
+    <div class="card-body">
+        <div class="file-grid" style="margin-bottom:16px;">
+            <div class="file-card">
+                <div class="file-name">app.py</div>
+                <div class="file-count">3</div>
+                <div class="file-desc">登录成功 / 登录失败 / 退出登录</div>
+            </div>
+            <div class="file-card">
+                <div class="file-name">employee.py</div>
+                <div class="file-count">3</div>
+                <div class="file-desc">新增员工 / 编辑员工 / 删除员工</div>
+            </div>
+            <div class="file-card">
+                <div class="file-name">predict.py</div>
+                <div class="file-count">4</div>
+                <div class="file-desc">单次预测 / 批量预测 / 生成报告 / 下载报告 / 邮件发送 / 添加干预</div>
+            </div>
+            <div class="file-card">
+                <div class="file-name">user.py</div>
+                <div class="file-count">2</div>
+                <div class="file-desc">创建用户 / 修改密码</div>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="point-card">
+                <div class="point-file">📄 app.py — 认证相关 (3处)</div>
+                <div class="point-items">
+                    · 登录成功 → log_action('登录成功', username, ...)<br>
+                    · 登录失败 → log_action('登录失败', username, ...)<br>
+                    · 退出登录 → log_action('退出登录', '', '')
+                </div>
+            </div>
+            <div class="point-card warn">
+                <div class="point-file">📄 blueprints/employee.py — 员工管理 (3处)</div>
+                <div class="point-items">
+                    · 新增员工 → log_action('新增员工', emp_id, ...)<br>
+                    · 编辑员工 → log_action('编辑员工', emp_id, ...)<br>
+                    · 删除员工 → log_action('删除员工', emp_id, '')
+                </div>
+            </div>
+            <div class="point-card">
+                <div class="point-file">📄 blueprints/predict.py — 预测+报告 (6处)</div>
+                <div class="point-items">
+                    · 单次预测 → log_action('单次预测', ...)<br>
+                    · 批量预测 → log_action('批量预测', ...)<br>
+                    · 生成报告 → log_action('生成报告', ...)<br>
+                    · 下载报告 → log_action('下载报告', ...)<br>
+                    · 发送邮件 → log_action('发送报告邮件', ...)<br>
+                    · 添加干预 → log_action('添加干预记录', ...)
+                </div>
+            </div>
+            <div class="point-card danger">
+                <div class="point-file">📄 blueprints/user.py — 用户管理 (2处)</div>
+                <div class="point-items">
+                    · 创建用户 → log_action('创建用户', username, ...)<br>
+                    · 修改密码 → log_action('修改密码', username, '')
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 操作类型颜色图例 -->
+<div class="card">
+    <div class="card-header"><span class="dot" style="background:#5FB878;"></span> 操作类型颜色标签</div>
+    <div class="card-body">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span class="action-tag action-登录成功">登录成功</span>
+            <span class="action-tag action-登录失败">登录失败</span>
+            <span class="action-tag action-退出登录">退出登录</span>
+            <span class="action-tag action-新增员工">新增员工</span>
+            <span class="action-tag action-编辑员工">编辑员工</span>
+            <span class="action-tag action-删除员工">删除员工</span>
+            <span class="action-tag action-单次预测">单次预测</span>
+            <span class="action-tag action-批量预测">批量预测</span>
+            <span class="action-tag action-生成报告">生成报告</span>
+            <span class="action-tag action-下载报告">下载报告</span>
+            <span class="action-tag action-发送报告邮件">发送报告邮件</span>
+            <span class="action-tag action-添加干预记录">添加干预记录</span>
+            <span class="action-tag action-创建用户">创建用户</span>
+            <span class="action-tag action-修改密码">修改密码</span>
+        </div>
+    </div>
+</div>
+
+<style>
+.action-tag { display:inline-block; padding:4px 12px; border-radius:14px; font-size:12px; font-weight:600; color:#fff; }
+.action-登录成功 { background:#5FB878; } .action-登录失败 { background:#FF5722; }
+.action-退出登录 { background:#909399; } .action-新增员工 { background:#409EFF; }
+.action-编辑员工 { background:#FF9800; } .action-删除员工 { background:#FF5722; }
+.action-单次预测 { background:#8B5CF6; } .action-批量预测 { background:#6366f1; }
+.action-生成报告 { background:#14B8A6; } .action-下载报告 { background:#5FB878; }
+.action-发送报告邮件 { background:#F59E0B; } .action-添加干预记录 { background:#FF9800; }
+.action-创建用户 { background:#409EFF; } .action-修改密码 { background:#909399; }
+</style>
+
+<script src="/static/layui.js"></script>
+</body>
+</html>
